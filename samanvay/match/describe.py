@@ -1,11 +1,12 @@
-import numpy as np
 import cv2
+import numpy as np
+
 
 def describe_keypoints(
     img: np.ndarray,
     kps: list[cv2.KeyPoint],
     method: str = "sift",
-    pc_orient: np.ndarray = None
+    pc_orient: np.ndarray | None = None,
 ) -> tuple[list[cv2.KeyPoint], np.ndarray]:
     """
     Computes descriptors for keypoints.
@@ -18,9 +19,9 @@ def describe_keypoints(
         
     if method in ("sift", "orb"):
         if method == "sift":
-            descriptor_extractor = cv2.SIFT_create()
+            descriptor_extractor = cv2.SIFT_create()  # type: ignore[attr-defined]
         else:
-            descriptor_extractor = cv2.ORB_create()
+            descriptor_extractor = cv2.ORB_create()  # type: ignore[attr-defined]
             
         kps_computed, descs = descriptor_extractor.compute(img, kps)
         if descs is None:
@@ -51,7 +52,7 @@ def describe_keypoints(
         descriptors = []
         
         for kp in kps:
-            x, y = int(round(kp.pt[0])), int(round(kp.pt[1]))
+            x, y = round(kp.pt[0]), round(kp.pt[1])
             # Bound check
             if x - half_p < 0 or x + half_p >= w or y - half_p < 0 or y + half_p >= h:
                 continue
@@ -61,18 +62,18 @@ def describe_keypoints(
             # Construct a histogram-of-orientations descriptor
             # 16x16 patch split into 4x4 spatial blocks. Each block has 8 orientation bins.
             # Output feature size: 4 * 4 * 8 = 128 dimensions.
-            desc = []
+            desc_list: list[float] = []
             for sy in range(4):
                 for sx in range(4):
                     block = patch_orient[sy*4 : (sy+1)*4, sx*4 : (sx+1)*4]
                     hist, _ = np.histogram(block, bins=8, range=(0, 2*np.pi))
-                    desc.extend(hist)
+                    desc_list.extend(hist.astype(float))
             
-            desc = np.array(desc, dtype=np.float32)
-            norm = np.linalg.norm(desc)
+            desc_arr = np.array(desc_list, dtype=np.float32)
+            norm = np.linalg.norm(desc_arr)
             if norm > 0:
-                desc /= norm
-            descriptors.append(desc)
+                desc_arr /= norm
+            descriptors.append(desc_arr)
             valid_kps.append(kp)
             
         if len(descriptors) == 0:

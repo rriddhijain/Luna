@@ -15,18 +15,15 @@ is close to the injected noise_std.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Tuple
-
 import numpy as np
 
 from samanvay.types import MatchSet
 
 
 def random_homography(
-    image_shape: Tuple[int, int] = (1024, 1024),
+    image_shape: tuple[int, int] = (1024, 1024),
     max_rotation_deg: float = 8.0,
-    scale_range: Tuple[float, float] = (0.5, 2.0),
+    scale_range: tuple[float, float] = (0.5, 2.0),
     max_translation_frac: float = 0.05,
     rng: np.random.Generator | None = None,
 ) -> np.ndarray:
@@ -80,7 +77,7 @@ def apply_homography(H: np.ndarray, xy: np.ndarray) -> np.ndarray:
 
 def generate_fake_matches(
     n_points: int = 200,
-    image_shape: Tuple[int, int] = (1024, 1024),
+    image_shape: tuple[int, int] = (1024, 1024),
     homography: np.ndarray | None = None,
     noise_std: float = 0.3,
     outlier_frac: float = 0.2,
@@ -88,7 +85,7 @@ def generate_fake_matches(
     seed: int | None = 0,
     num_points: int | None = None,
     outlier_fraction: float | None = None,
-) -> Tuple[MatchSet, np.ndarray]:
+) -> tuple[MatchSet, np.ndarray]:
     """Generate a synthetic MatchSet plus the ground-truth homography used
     to build it.
 
@@ -123,7 +120,7 @@ def generate_fake_matches(
 
     ref_xy = ref_xy_true + rng.normal(scale=noise_std, size=ref_xy_true.shape)
 
-    n_outliers = int(round(outlier_frac * n_points))
+    n_outliers = round(outlier_frac * n_points)
     if n_outliers > 0:
         idx = rng.choice(n_points, size=n_outliers, replace=False)
         offsets = rng.normal(scale=outlier_magnitude, size=(n_outliers, 2))

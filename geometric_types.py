@@ -18,7 +18,6 @@ CONVENTIONS (agree these in the Day-0 contract session and do not deviate):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional
 
 import numpy as np
 
@@ -80,10 +79,10 @@ class Registration:
 
     model_type: str  # "similarity" | "affine" | "homography"
     params: np.ndarray  # 3x3, source -> reference
-    init_params: Optional[np.ndarray] = None  # 3x3, coarse init used
-    inliers: Optional[np.ndarray] = None  # (N,) bool
-    residuals: Optional[np.ndarray] = None  # (N,2) float64, source pixels
-    sigma: Optional[np.ndarray] = None  # (N,) float64, per-point uncertainty
+    init_params: np.ndarray | None = None  # 3x3, coarse init used
+    inliers: np.ndarray | None = None  # (N,) bool
+    residuals: np.ndarray | None = None  # (N,2) float64, source pixels
+    sigma: np.ndarray | None = None  # (N,) float64, per-point uncertainty
     metrics: dict = field(default_factory=dict)
     # metrics is expected to contain (when available):
     #   rmse_px, inlier_count, inlier_ratio, coverage_pct,

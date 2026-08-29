@@ -11,18 +11,18 @@ enforcement on/off).
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any
 
 import numpy as np
 
-from geometry.uniformity import UniformityReport
 from geometric_types import Registration
+from geometry.uniformity import UniformityReport
 
 
 def build_metrics(
     registration: Registration,
-    uniformity: Optional[UniformityReport] = None,
-    runtime_s: Optional[float] = None,
+    uniformity: UniformityReport | None = None,
+    runtime_s: float | None = None,
 ) -> dict:
     """Assemble the final metrics dict that gets written to metrics.json.
     Prefers the sub-pixel RMSE if refinement has been run, falls back to
@@ -65,7 +65,7 @@ def compare_to_ground_truth(
         "gt_rmse_px": float(np.sqrt(np.mean(sq))),
         "gt_mean_err_px": float(np.mean(np.sqrt(sq))),
         "gt_max_err_px": float(np.sqrt(sq).max()),
-        "gt_n_points": int(len(src_xy)),
+        "gt_n_points": len(src_xy),
     }
 
 
@@ -86,15 +86,16 @@ def build_ablation_table(runs: dict[str, dict]) -> list[dict]:
     headline_keys = ["rmse_px_final", "inlier_ratio", "coverage_pct", "runtime_s"]
     baseline = runs.get("full")
 
-    table = []
+    table: list[dict[str, Any]] = []
     for label, m in runs.items():
-        row = {"config": label}
+        row: dict[str, Any] = {"config": label}
         for k in headline_keys:
             row[k] = m.get(k, float("nan"))
             if baseline is not None and label != "full" and k in baseline:
                 base_val = baseline.get(k, float("nan"))
                 if isinstance(base_val, (int, float)) and np.isfinite(base_val) and base_val != 0:
-                    row[f"{k}_delta_pct"] = 100.0 * (row[k] - base_val) / base_val
+                    val = float(row[k])
+                    row[f"{k}_delta_pct"] = 100.0 * (val - float(base_val)) / float(base_val)
         table.append(row)
     return table
 
@@ -121,12 +122,13 @@ def print_ablation_table(table: list[dict]) -> None:
 
 
 if __name__ == "__main__":
-    from bench.fake_matches import generate_fake_matches, apply_homography
-    from geometry.verify import verify
+    from bench.fake_matches import apply_homography, generate_fake_matches
     from geometry.uniformity import compute_uniformity
+    from geometry.verify import verify
 
     matches, H_true = generate_fake_matches(n_points=250, noise_std=0.4, outlier_frac=0.2, seed=7)
     reg = verify(matches)
+    assert reg.inliers is not None
     uni = compute_uniformity(matches.src_xy, reg.inliers, image_shape=(1024, 1024), grid_n=8)
 
     metrics = build_metrics(reg, uni)

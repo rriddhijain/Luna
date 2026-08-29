@@ -1,9 +1,12 @@
-import os
-import json
 import csv
+import json
+import os
+
 import numpy as np
 import rasterio
-from samanvay.types import Product, MatchSet, Registration
+
+from samanvay.types import MatchSet, Product, Registration
+
 
 def write_outputs(
     out_dir: str,
@@ -46,10 +49,14 @@ def write_outputs(
             "id", "src_x", "src_y", "ref_x", "ref_y", "score",
             "is_inlier", "residual_px", "sigma_px", "grid_cell"
         ])
+        inliers_arr = registration.inliers if registration.inliers is not None else np.ones(len(matches.src_xy), dtype=bool)
+        residuals_arr = registration.residuals if registration.residuals is not None else np.zeros((len(matches.src_xy), 2))
+        sigma_arr = registration.sigma if registration.sigma is not None else np.full(len(matches.src_xy), 0.1)
+
         for i in range(len(matches.src_xy)):
-            inlier = int(registration.inliers[i]) if i < len(registration.inliers) else 1
-            res = np.linalg.norm(registration.residuals[i]) if i < len(registration.residuals) else 0.0
-            sig = registration.sigma[i] if i < len(registration.sigma) else 0.1
+            inlier = int(inliers_arr[i]) if i < len(inliers_arr) else 1
+            res = float(np.linalg.norm(residuals_arr[i])) if i < len(residuals_arr) else 0.0
+            sig = float(sigma_arr[i]) if i < len(sigma_arr) else 0.1
             writer.writerow([
                 i,
                 matches.src_xy[i, 0], matches.src_xy[i, 1],

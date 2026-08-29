@@ -26,7 +26,6 @@ Three cell states are tracked, and must not be conflated:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
 
 import numpy as np
 
@@ -83,7 +82,7 @@ def assign_cells(
 
 
 def _mask_fraction_per_cell(
-    mask: Optional[np.ndarray], image_shape: tuple[int, int], grid_n: int
+    mask: np.ndarray | None, image_shape: tuple[int, int], grid_n: int
 ) -> np.ndarray:
     """Compute, per grid cell, the fraction of pixels that are INVALID
     (mask != 0, i.e. shadow/nodata/saturated). Returns (grid_n, grid_n).
@@ -108,7 +107,7 @@ def compute_uniformity(
     inliers: np.ndarray,
     image_shape: tuple[int, int],
     grid_n: int = 8,
-    validity_mask: Optional[np.ndarray] = None,
+    validity_mask: np.ndarray | None = None,
     masked_cell_threshold: float = 0.5,
 ) -> UniformityReport:
     """Compute the uniformity report for a set of inlier match locations.

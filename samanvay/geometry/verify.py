@@ -1,8 +1,10 @@
-import numpy as np
 import cv2
+import numpy as np
+
 from samanvay.types import MatchSet, Registration
 
-def verify_matches(matches: MatchSet, config: dict = None) -> Registration:
+
+def verify_matches(matches: MatchSet, config: dict | None = None) -> Registration:
     if config is None:
         config = {}
     
@@ -27,11 +29,13 @@ def verify_matches(matches: MatchSet, config: dict = None) -> Registration:
 
     # Use MAGSAC++ if available, fallback to RANSAC
     method_flag = getattr(cv2, "USAC_MAGSAC", cv2.RANSAC)
-    H, mask = cv2.findHomography(src, ref, method_flag, 3.0)
+    H_mat, mask = cv2.findHomography(src, ref, method_flag, 3.0)
     
-    if H is None:
+    if H_mat is None or mask is None:
         H = np.eye(3)
         mask = np.zeros(len(src), dtype=np.uint8)
+    else:
+        H = np.asarray(H_mat, dtype=np.float64)
         
     inliers = mask.flatten().astype(bool)
     

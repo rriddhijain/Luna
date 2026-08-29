@@ -18,7 +18,7 @@ document it and be ready to justify it to a judge/reviewer.
 from __future__ import annotations
 
 import time
-from typing import Optional
+from typing import Any
 
 import cv2
 import numpy as np
@@ -67,7 +67,7 @@ def _fit_model(
     reproj_threshold_px: float,
     confidence: float,
     max_iters: int,
-) -> tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+) -> tuple[np.ndarray | None, np.ndarray | None]:
     """Fit one model from the ladder using MAGSAC++ where OpenCV supports
     it. Returns (M_3x3_or_None, inlier_mask_or_None)."""
 
@@ -123,7 +123,7 @@ def _rmse_on_inliers(
 
 def verify(
     matches: MatchSet,
-    init_params: Optional[np.ndarray] = None,
+    init_params: np.ndarray | None = None,
     model_ladder: tuple = MODEL_LADDER,
     reproj_threshold_px: float = DEFAULT_REPROJ_THRESHOLD_PX,
     model_margin: float = DEFAULT_MODEL_MARGIN,
@@ -143,12 +143,12 @@ def verify(
     t0 = time.time()
     n = len(matches)
 
-    results = {}
+    results: dict[str, dict[str, Any]] = {}
     for model_type in model_ladder:
         if n < MIN_POINTS[model_type]:
             continue
         try:
-            M, inlier_mask = _fit_model(
+            M_fit, inlier_mask = _fit_model(
                 model_type,
                 matches.src_xy,
                 matches.ref_xy,
@@ -157,13 +157,13 @@ def verify(
                 max_iters,
             )
         except cv2.error:
-            M, inlier_mask = None, None
+            M_fit, inlier_mask = None, None
 
-        if M is None or inlier_mask is None or inlier_mask.sum() < MIN_POINTS[model_type]:
+        if M_fit is None or inlier_mask is None or inlier_mask.sum() < MIN_POINTS[model_type]:
             continue
 
-        rmse = _rmse_on_inliers(M, matches.src_xy, matches.ref_xy, inlier_mask)
-        results[model_type] = {"M": M, "inliers": inlier_mask, "rmse": rmse}
+        rmse_val = _rmse_on_inliers(M_fit, matches.src_xy, matches.ref_xy, inlier_mask)
+        results[model_type] = {"M": M_fit, "inliers": inlier_mask, "rmse": float(rmse_val)}
 
     runtime_s = time.time() - t0
 
@@ -184,21 +184,22 @@ def verify(
             },
         )
 
-    best_rmse = min(r["rmse"] for r in results.values())
-    chosen_type = None
+    best_rmse: float = min(float(r["rmse"]) for r in results.values())
+    chosen_type: str | None = None
     for model_type in model_ladder:  # ladder order = simplest first
         if model_type not in results:
             continue
         r = results[model_type]
-        if r["rmse"] <= best_rmse * (1.0 + model_margin):
+        if float(r["rmse"]) <= best_rmse * (1.0 + model_margin):
             chosen_type = model_type
             break
     if chosen_type is None:
-        chosen_type = min(results, key=lambda k: results[k]["rmse"])
+        chosen_type = min(results, key=lambda k: float(results[k]["rmse"]))
 
     chosen = results[chosen_type]
-    M = chosen["M"]
-    inliers = chosen["inliers"]
+    M: np.ndarray = chosen["M"]
+    inliers: np.ndarray = chosen["inliers"]
+    chosen_rmse: float = float(chosen["rmse"])
 
     pred = _apply(M, matches.src_xy)
     residuals = pred - matches.ref_xy  # NOTE: currently in reference pixels;
@@ -206,13 +207,13 @@ def verify(
     # local scale of M where needed (see convert_residuals_to_source_px).
 
     metrics = {
-        "rmse_px": chosen["rmse"],
+        "rmse_px": chosen_rmse,
         "inlier_count": int(inliers.sum()),
         "inlier_ratio": float(inliers.sum() / n) if n > 0 else 0.0,
         "runtime_s": runtime_s,
         "status": "ok",
         "model_margin_used": model_margin,
-        "candidates": {k: round(v["rmse"], 4) for k, v in results.items()},
+        "candidates": {k: round(float(v["rmse"]), 4) for k, v in results.items()},
     }
 
     return Registration(

@@ -1,8 +1,9 @@
-import numpy as np
 import cv2
+import numpy as np
 from scipy.ndimage import maximum_filter
 
-def detect_keypoints(img: np.ndarray, method: str = "sift", pc_map: np.ndarray = None) -> list[cv2.KeyPoint]:
+
+def detect_keypoints(img: np.ndarray, method: str = "sift", pc_map: np.ndarray | None = None) -> list[cv2.KeyPoint]:
     """
     Detects keypoints using classical (SIFT/ORB) or phase congruency (L2) feature maps.
     If pc_map is not provided or all zeros, L2 falls back to gradient-magnitude/structure-tensor corners.
@@ -12,9 +13,9 @@ def detect_keypoints(img: np.ndarray, method: str = "sift", pc_map: np.ndarray =
     if method in ("sift", "orb"):
         # L0 baseline
         if method == "sift":
-            detector = cv2.SIFT_create()
+            detector = cv2.SIFT_create()  # type: ignore[attr-defined]
         else:
-            detector = cv2.ORB_create(nfeatures=2000)
+            detector = cv2.ORB_create(nfeatures=2000)  # type: ignore[attr-defined]
         kps = detector.detect(img, None)
         return kps
         

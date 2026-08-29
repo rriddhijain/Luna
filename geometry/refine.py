@@ -24,7 +24,6 @@ This module has two independent entry points:
 from __future__ import annotations
 
 from dataclasses import replace
-from typing import Optional, Tuple
 
 import numpy as np
 from skimage.registration import phase_cross_correlation
@@ -39,13 +38,13 @@ DEFAULT_MAX_ERROR = 0.6
 
 
 def _extract_patch(
-    image: np.ndarray, center_xy: Tuple[float, float], radius: int
-) -> Optional[np.ndarray]:
+    image: np.ndarray, center_xy: tuple[float, float], radius: int
+) -> np.ndarray | None:
     """Extract a (2r+1, 2r+1) patch centred (to the nearest pixel) on
     center_xy=(x,y). Returns None if the patch would fall outside the
     image bounds."""
     x, y = center_xy
-    cx, cy = int(round(x)), int(round(y))
+    cx, cy = round(x), round(y)
     h, w = image.shape[:2]
     x0, x1 = cx - radius, cx + radius + 1
     y0, y1 = cy - radius, cy + radius + 1
@@ -59,7 +58,7 @@ def refine_point_subpixel(
     ref_patch: np.ndarray,
     upsample_factor: int = DEFAULT_UPSAMPLE_FACTOR,
     max_error: float = DEFAULT_MAX_ERROR,
-) -> Tuple[Optional[np.ndarray], Optional[float], float]:
+) -> tuple[np.ndarray | None, float | None, float]:
     """Refine a single correspondence given two same-shape patches, one
     centred on the (integer-pixel) source point warped into the reference
     frame, one centred on the current reference-side estimate.
@@ -189,6 +188,7 @@ if __name__ == "__main__":
     ref_patch = shifted[c - r : c + r + 1, c - r : c + r + 1]
 
     shift_xy, sigma, err = refine_point_subpixel(src_patch, ref_patch)
+    assert shift_xy is not None and sigma is not None and err is not None
     print(f"Injected shift: dx={true_dx}, dy={true_dy}")
     print(f"Recovered shift: dx={shift_xy[0]:.3f}, dy={shift_xy[1]:.3f}  (sigma={sigma:.4f}, err={err:.4f})")
 
@@ -200,10 +200,11 @@ if __name__ == "__main__":
     # (noise-free) warped position, not against the noisy detector match
     # -- that noisy match is exactly what refinement is meant to correct.
     print("\n--- full refine_registration smoke test ---")
-    from scipy.ndimage import gaussian_filter
-    from bench.fake_matches import generate_fake_matches, apply_homography
-    from geometry.verify import verify
     import cv2
+    from scipy.ndimage import gaussian_filter
+
+    from bench.fake_matches import apply_homography, generate_fake_matches
+    from geometry.verify import verify
 
     img_shape = (512, 512)
     src_img = gaussian_filter(rng.normal(size=img_shape), sigma=2.0)
@@ -217,12 +218,7 @@ if __name__ == "__main__":
     reg = verify(matches)
     reg_refined = refine_registration(reg, matches, src_img, ref_img, max_error=1.5)
 
-    # Ground-truth check: for each refined point, recover the ACTUAL
-    # refined reference-frame position (predicted position + residual,
-    # since residuals = predicted - detected) and compare it against the
-    # true, noise-free warp of the source point. This is the fair way to
-    # judge sub-pixel refinement: did it move us closer to the truth than
-    # the noisy detector match was?
+    assert reg_refined.sigma is not None and reg_refined.residuals is not None
     refined_mask = ~np.isnan(reg_refined.sigma)
     true_ref_xy = apply_homography(H_true, matches.src_xy)
 

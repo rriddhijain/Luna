@@ -1,8 +1,9 @@
 import os
 import shutil
-import pytest
+
 from samanvay.pipeline.stages import run_pipeline
 from synth.render_pair import render_synthetic_pair
+
 
 def test_pipeline_runs():
     source_tif = "tests/data/source.tif"

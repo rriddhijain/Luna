@@ -3,7 +3,7 @@
 # - Transforms map source → reference.
 # - All residuals are expressed in source pixels.
 
-from geometric_types import Product, CanonicalImage, MatchSet, Registration
+from geometric_types import CanonicalImage, MatchSet, Product, Registration
 
-__all__ = ["Product", "CanonicalImage", "MatchSet", "Registration"]
+__all__ = ["CanonicalImage", "MatchSet", "Product", "Registration"]
 

@@ -11,13 +11,16 @@ import numpy as np
 import pytest
 
 from bench.fake_matches import apply_homography, generate_fake_matches
+from geometric_types import MatchSet, Registration
 from geometry.init import coarse_init, geotransform_to_matrix, search_window_from_offset
-from geometry.metrics import build_ablation_table, build_metrics, compare_to_ground_truth
+from geometry.metrics import (
+    build_ablation_table,
+    build_metrics,
+    compare_to_ground_truth,
+)
 from geometry.refine import refine_point_subpixel, refine_registration
 from geometry.uniformity import assign_cells, compute_uniformity
 from geometry.verify import verify
-from geometric_types import MatchSet, Registration
-
 
 # ---------------------------------------------------------------------------
 # geometry/init.py
@@ -79,7 +82,7 @@ def test_generate_fake_matches_reproducible_with_seed():
 # ---------------------------------------------------------------------------
 
 def test_verify_recovers_known_homography_low_noise():
-    matches, H_true = generate_fake_matches(
+    matches, _ = generate_fake_matches(
         n_points=200, noise_std=0.2, outlier_frac=0.0, seed=10
     )
     reg = verify(matches)
@@ -91,7 +94,7 @@ def test_verify_recovers_known_homography_low_noise():
 
 
 def test_verify_is_robust_to_outliers():
-    matches, H_true = generate_fake_matches(
+    matches, _ = generate_fake_matches(
         n_points=300, noise_std=0.3, outlier_frac=0.3, seed=11
     )
     reg = verify(matches)
@@ -161,7 +164,7 @@ def test_refine_point_subpixel_recovers_known_shift():
     src_patch = base[c - r : c + r + 1, c - r : c + r + 1]
     ref_patch = shifted[c - r : c + r + 1, c - r : c + r + 1]
 
-    shift_xy, sigma, err = refine_point_subpixel(src_patch, ref_patch)
+    shift_xy, sigma, _ = refine_point_subpixel(src_patch, ref_patch)
     assert shift_xy is not None
     assert abs(shift_xy[0] - true_dx) < 0.3
     assert abs(shift_xy[1] - true_dy) < 0.3
@@ -172,14 +175,14 @@ def test_refine_point_subpixel_rejects_uncorrelated_patches():
     rng = np.random.default_rng(3)
     src_patch = rng.normal(size=(48, 48))
     ref_patch = rng.normal(size=(48, 48))  # unrelated noise
-    shift_xy, sigma, err = refine_point_subpixel(src_patch, ref_patch, max_error=0.3)
+    shift_xy, sigma, _ = refine_point_subpixel(src_patch, ref_patch, max_error=0.3)
     assert shift_xy is None
     assert sigma is None
 
 
 def test_refine_registration_improves_accuracy_vs_ground_truth():
-    from scipy.ndimage import gaussian_filter
     import cv2
+    from scipy.ndimage import gaussian_filter
 
     rng = np.random.default_rng(4)
     img_shape = (400, 400)
@@ -288,8 +291,8 @@ def test_build_ablation_table_computes_deltas():
 # ---------------------------------------------------------------------------
 
 def test_end_to_end_pipeline_on_synthetic_pair():
-    from scipy.ndimage import gaussian_filter
     import cv2
+    from scipy.ndimage import gaussian_filter
 
     rng = np.random.default_rng(99)
     img_shape = (600, 600)

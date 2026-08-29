@@ -1,8 +1,9 @@
 import numpy as np
-import pytest
-from samanvay.types import CanonicalImage
+
 from samanvay.match.classical import match_images
 from samanvay.match.tile import match_tiled
+from samanvay.types import CanonicalImage
+
 
 def create_synthetic_image(h=512, w=512, pattern="random"):
     np.random.seed(42)

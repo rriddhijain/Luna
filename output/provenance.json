@@ -1,0 +1,16 @@
+{
+    "source_product": "data/source.tif",
+    "reference_product": "data/reference.tif",
+    "git_sha": "skeleton-sha-12345",
+    "config": {
+        "seed": 42,
+        "match": {},
+        "geometry": {},
+        "photometry": {}
+    },
+    "package_versions": {
+        "numpy": "2.3.5",
+        "rasterio": "1.5.1"
+    },
+    "seed": 42
+}

@@ -1,10 +1,12 @@
-import numpy as np
 import cv2
-from samanvay.types import CanonicalImage, MatchSet
-from samanvay.match.detect import detect_keypoints
-from samanvay.match.describe import describe_keypoints
+import numpy as np
 
-def match_images(source: CanonicalImage, reference: CanonicalImage, config: dict = None) -> MatchSet:
+from samanvay.match.describe import describe_keypoints
+from samanvay.match.detect import detect_keypoints
+from samanvay.types import CanonicalImage, MatchSet
+
+
+def match_images(source: CanonicalImage, reference: CanonicalImage, config: dict | None = None) -> MatchSet:
     """
     Orchestrates the matching of source and reference images.
     Delegates keypoint detection and description tasks to separate modules.
@@ -13,7 +15,6 @@ def match_images(source: CanonicalImage, reference: CanonicalImage, config: dict
         config = {}
         
     method_name = config.get("method", "sift").lower()
-    ratio_thresh = config.get("ratio_threshold", 0.75)
     
     # Pre-process image boundaries/types
     src_img = (source.albedo * 255).astype(np.uint8)
@@ -47,9 +48,9 @@ def match_images(source: CanonicalImage, reference: CanonicalImage, config: dict
         
     if len(desc_ref) < 2:
         # Fallback to 1-nn match if reference set is too small
-        raw_matches = [[m[0]] for m in matcher.knnMatch(desc_src, desc_ref, k=1) if len(m) > 0]
+        raw_matches: list[tuple[cv2.DMatch, ...]] = [tuple(m) for m in matcher.knnMatch(desc_src, desc_ref, k=1) if len(m) > 0]
     else:
-        raw_matches = matcher.knnMatch(desc_src, desc_ref, k=2)
+        raw_matches = [tuple(m) for m in matcher.knnMatch(desc_src, desc_ref, k=2)]
     
     src_pts = []
     ref_pts = []

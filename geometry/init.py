@@ -23,7 +23,7 @@ i.e. pixel -> world is the affine matrix:
 
 from __future__ import annotations
 
-from typing import Sequence, Tuple
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -84,9 +84,9 @@ def coarse_init(
 
 def search_window_from_offset(
     init_params: np.ndarray,
-    src_shape: Tuple[int, int],
+    src_shape: tuple[int, int],
     uncertainty_px: float = 50.0,
-) -> Tuple[float, float, float, float]:
+) -> tuple[float, float, float, float]:
     """Given a coarse init transform and the source image shape, return a
     (min_x, min_y, max_x, max_y) bounding box in REFERENCE pixel space to
     restrict the fine-matching search to, allowing for a geodetic offset

@@ -25,7 +25,7 @@ from geometry.metrics import (
     compare_to_ground_truth,
     print_ablation_table,
 )
-from geometry.refine import refine_registration, _apply_homog
+from geometry.refine import _apply_homog, refine_registration
 from geometry.uniformity import compute_uniformity
 from geometry.verify import verify
 
@@ -49,8 +49,8 @@ def run_subpixel_ablation(
     comparison the real pipeline performs on synthetic fixtures (per
     seat 2's D1 golden fixture, which carries exact GT for this reason).
     """
-    from scipy.ndimage import gaussian_filter
     import cv2
+    from scipy.ndimage import gaussian_filter
 
     rng = np.random.default_rng(seed)
     src_img = gaussian_filter(rng.normal(size=image_shape), sigma=2.0)
@@ -64,6 +64,7 @@ def run_subpixel_ablation(
     true_ref_xy = apply_homography(H_true, matches.src_xy)
 
     reg = verify(matches)
+    assert reg.inliers is not None
     uni = compute_uniformity(matches.src_xy, reg.inliers, image_shape, grid_n=8)
     metrics_no_subpixel = build_metrics(reg, uni)
     gt_no_subpixel = compare_to_ground_truth(reg, matches.src_xy, true_ref_xy)
@@ -77,6 +78,7 @@ def run_subpixel_ablation(
     # where refinement succeeded. This mirrors what a real pipeline would
     # report (it never trusts a raw unrefined detection over its own
     # fitted model for an outlier).
+    assert reg_refined.sigma is not None and reg_refined.residuals is not None
     refined_mask = ~np.isnan(reg_refined.sigma)
     pred_ref_xy = np.array([_apply_homog(reg_refined.params, xy) for xy in matches.src_xy])
     best_ref_xy = pred_ref_xy.copy()
@@ -119,6 +121,7 @@ def run_uniformity_ablation(
         noise_std=0.4, outlier_frac=0.1, seed=seed,
     )
     reg_full = verify(spread_matches)
+    assert reg_full.inliers is not None
     uni_full = compute_uniformity(spread_matches.src_xy, reg_full.inliers, image_shape, grid_n=grid_n)
     metrics_full = build_metrics(reg_full, uni_full)
 
@@ -136,6 +139,7 @@ def run_uniformity_ablation(
         cell=-np.ones(n_points, dtype=np.int32),
     )
     reg_clustered = verify(clustered_matches)
+    assert reg_clustered.inliers is not None
     uni_clustered = compute_uniformity(clustered_matches.src_xy, reg_clustered.inliers, image_shape, grid_n=grid_n)
     metrics_no_uniformity = build_metrics(reg_clustered, uni_clustered)
 
