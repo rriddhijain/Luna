@@ -1,12 +1,13 @@
-import numpy as np
 import cv2
-from samanvay.io.loaders import load_product
-from samanvay.photometry.normalize import canonicalise
-from samanvay.match.tile import match_tiled
-from samanvay.geometry.verify import verify_matches
-from samanvay.io.writers import write_outputs
 
-def run_pipeline(source_path: str, ref_path: str, out_dir: str, config: dict = None) -> None:
+from samanvay.geometry.verify import verify_matches
+from samanvay.io.loaders import load_product
+from samanvay.io.writers import write_outputs
+from samanvay.match.tile import match_tiled
+from samanvay.photometry.normalize import canonicalise
+
+
+def run_pipeline(source_path: str, ref_path: str, out_dir: str, config: dict | None = None) -> None:
     if config is None:
         config = {}
         

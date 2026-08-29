@@ -1,5 +1,7 @@
 import click
+
 from samanvay.pipeline.stages import run_pipeline
+
 
 @click.group()
 def cli():

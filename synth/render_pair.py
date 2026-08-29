@@ -1,7 +1,9 @@
 import os
+
 import numpy as np
 import rasterio
 from rasterio.transform import from_origin
+
 
 def render_synthetic_pair(out_src: str = "data/source.tif", out_ref: str = "data/reference.tif"):
     """

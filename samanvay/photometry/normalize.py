@@ -1,7 +1,9 @@
 import numpy as np
-from samanvay.types import Product, CanonicalImage
 
-def canonicalise(product: Product, params: dict = None) -> CanonicalImage:
+from samanvay.types import CanonicalImage, Product
+
+
+def canonicalise(product: Product, params: dict | None = None) -> CanonicalImage:
     if params is None:
         params = {}
     

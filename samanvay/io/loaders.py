@@ -1,8 +1,13 @@
-import os
+import contextlib
 import json
+import os
+
 import numpy as np
+
 import rasterio
+
 from samanvay.types import Product
+
 
 def load_product(path: str) -> Product:
     # If the file does not exist, check if there's a sidecar JSON or return mock data.
@@ -20,16 +25,13 @@ def load_product(path: str) -> Product:
             "geotransform": [0.0, 1.0, 0.0, 0.0, 0.0, -1.0],
             "crs": "EPSG:32601",
             "shape": (1024, 1024),
-            "dtype": "float32"
+            "dtype": "float32",
         }
         # Try to find a JSON sidecar anyway
         sidecar_path = path + ".json"
         if os.path.exists(sidecar_path):
-            try:
-                with open(sidecar_path, "r") as f:
-                    meta.update(json.load(f))
-            except Exception:
-                pass
+            with contextlib.suppress(Exception), open(sidecar_path) as f:
+                meta.update(json.load(f))
     else:
         with rasterio.open(path) as src:
             array = src.read(1).astype(np.float32)
@@ -44,13 +46,11 @@ def load_product(path: str) -> Product:
                 "geotransform": list(src.transform)[:6],
                 "crs": str(src.crs),
                 "shape": src.shape,
-                "dtype": str(src.dtypes[0])
+                "dtype": str(src.dtypes[0]),
             }
             sidecar_path = path + ".json"
             if os.path.exists(sidecar_path):
-                try:
-                    with open(sidecar_path, "r") as f:
-                        meta.update(json.load(f))
-                except Exception:
-                    pass
+                with contextlib.suppress(Exception), open(sidecar_path) as f:
+                    meta.update(json.load(f))
     return Product(path=path, array=array, meta=meta)
+

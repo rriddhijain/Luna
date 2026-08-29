@@ -1,0 +1,22 @@
+{
+  "include": [
+    "samanvay",
+    "geometry",
+    "bench",
+    "synth",
+    "tests",
+    "geometric_types.py"
+  ],
+  "extraPaths": [
+    "."
+  ],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": ["."]
+    }
+  ],
+  "reportMissingImports": false,
+  "reportMissingTypeStubs": false
+}
+

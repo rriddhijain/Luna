@@ -1,14 +1,16 @@
 import numpy as np
-from samanvay.types import CanonicalImage, MatchSet
+
 from samanvay.match.classical import match_images
+from samanvay.types import CanonicalImage, MatchSet
+
 
 def match_tiled(
     source: CanonicalImage,
     reference: CanonicalImage,
     grid_n: int = 4,
     halo_px: int = 64,
-    config: dict = None,
-    cell_budgets: dict = None
+    config: dict | None = None,
+    cell_budgets: dict | None = None,
 ) -> MatchSet:
     """
     Splits source and reference images into grid_n x grid_n cells.

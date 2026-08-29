@@ -1,0 +1,9 @@
+{
+    "rmse_px": 0.0,
+    "inlier_count": 0,
+    "inlier_ratio": 0.0,
+    "coverage_pct": 0.0,
+    "dispersion_cv": 0.0,
+    "grid_n": 4,
+    "runtime_s": 0.0
+}
