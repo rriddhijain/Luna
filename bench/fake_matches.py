@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from samanvay.types import MatchSet
+from geometric_types import MatchSet
 
 
 def random_homography(
