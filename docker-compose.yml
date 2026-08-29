@@ -1,0 +1,6 @@
+services:
+  samanvay:
+    build: .
+    volumes:
+      - .:/app
+    command: register --source data/source.tif --ref data/reference.tif --out runs/demo_01
