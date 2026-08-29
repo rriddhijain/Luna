@@ -13,6 +13,11 @@ def match_images(source: CanonicalImage, reference: CanonicalImage, config: dict
         config = {}
         
     method_name = config.get("method", "sift").lower()
+    
+    if method_name == "loftr":
+        from samanvay.match.learned import match_loftr
+        return match_loftr(source, reference, config)
+        
     ratio_thresh = config.get("ratio_threshold", 0.75)
     
     # Pre-process image boundaries/types

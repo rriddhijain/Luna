@@ -12,6 +12,8 @@ dependencies = [
     "opencv-python-headless>=4.5.0",
     "click>=8.0.0",
     "pyyaml>=6.0",
+    "torch>=2.0.0",
+    "kornia>=0.7.0",
 ]
 
 [project.optional-dependencies]
