@@ -4,17 +4,15 @@ import os
 
 import numpy as np
 
-try:
-    import rasterio
-except ImportError:
-    rasterio = None
+import rasterio
+
 from samanvay.types import Product
 
 
 def load_product(path: str) -> Product:
     # If the file does not exist, check if there's a sidecar JSON or return mock data.
     # This acts as the D0 escape hatch/stub.
-    if not os.path.exists(path) or rasterio is None:
+    if not os.path.exists(path):
         array = np.zeros((1024, 1024), dtype=np.float32)
         meta = {
             "product_id": os.path.basename(path),

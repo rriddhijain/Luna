@@ -10,6 +10,13 @@
   "extraPaths": [
     "."
   ],
+  "executionEnvironments": [
+    {
+      "root": ".",
+      "extraPaths": ["."]
+    }
+  ],
   "reportMissingImports": false,
   "reportMissingTypeStubs": false
 }
+

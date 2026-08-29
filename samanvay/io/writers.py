@@ -3,6 +3,7 @@ import json
 import os
 
 import numpy as np
+# pyrefly: ignore [missing-import]
 import rasterio
 
 from samanvay.types import MatchSet, Product, Registration

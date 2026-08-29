@@ -40,7 +40,7 @@ DEFAULT_MAGSAC_CONFIDENCE = 0.999
 DEFAULT_MAGSAC_MAX_ITERS = 5000
 
 
-def _to_3x3(model_type: str, M: np.ndarray) -> np.ndarray:
+def _to_3x3(model_type: str, M: np.ndarray | None) -> np.ndarray | None:
     """Normalise an OpenCV 2x3 (similarity/affine) or 3x3 (homography)
     matrix into a 3x3 homogeneous matrix."""
     if M is None:

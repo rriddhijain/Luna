@@ -1,6 +1,6 @@
 {
-    "source_product": "data/source.tif",
-    "reference_product": "data/reference.tif",
+    "source_product": "data\\source.jpg",
+    "reference_product": "data\\ref.jpg",
     "git_sha": "skeleton-sha-12345",
     "config": {
         "seed": 42,
