@@ -17,11 +17,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Tuple
-from wsgiref import types
 
 import numpy as np
 
-from geometric_types import MatchSet
+from samanvay.types import MatchSet
 
 
 def random_homography(
@@ -87,6 +86,8 @@ def generate_fake_matches(
     outlier_frac: float = 0.2,
     outlier_magnitude: float = 150.0,
     seed: int | None = 0,
+    num_points: int | None = None,
+    outlier_fraction: float | None = None,
 ) -> Tuple[MatchSet, np.ndarray]:
     """Generate a synthetic MatchSet plus the ground-truth homography used
     to build it.
@@ -106,6 +107,11 @@ def generate_fake_matches(
     -------
     (matches, H_true)
     """
+    if num_points is not None:
+        n_points = num_points
+    if outlier_fraction is not None:
+        outlier_frac = outlier_fraction
+
     rng = np.random.default_rng(seed)
     h, w = image_shape
 
@@ -139,7 +145,8 @@ def generate_fake_matches(
 if __name__ == "__main__":
     # Quick smoke test when run directly: python -m bench.fake_matches
     matches, H = generate_fake_matches(n_points=300, noise_std=0.4, outlier_frac=0.25)
-    print(f"Generated {len(matches)} fake matches")
+    print(f"Generated {len(matches.src_xy)} fake matches")
     print("Ground-truth homography:\n", H)
     print("src_xy sample:\n", matches.src_xy[:3])
     print("ref_xy sample:\n", matches.ref_xy[:3])
+
