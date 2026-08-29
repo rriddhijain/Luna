@@ -33,6 +33,24 @@ def test_sift_matching():
     assert isinstance(matches.src_xy, np.ndarray)
     assert len(matches.src_xy) > 0
 
+def test_orb_matching():
+    src = create_synthetic_image(pattern="checkerboard")
+    ref = create_synthetic_image(pattern="checkerboard")
+    
+    matches = match_images(src, ref, {"method": "orb"})
+    assert isinstance(matches.src_xy, np.ndarray)
+    assert len(matches.src_xy) > 0
+
+def test_l2_matching_with_gradient_fallback():
+    src = create_synthetic_image(pattern="checkerboard")
+    ref = create_synthetic_image(pattern="checkerboard")
+    
+    # pc and pc_orient maps are intentionally zero to test independent fallback
+    matches = match_images(src, ref, {"method": "l2"})
+    assert isinstance(matches.src_xy, np.ndarray)
+    assert len(matches.src_xy) > 0
+    assert np.all(matches.method == 2) # L2 method id
+
 def test_tiled_matching():
     src = create_synthetic_image(pattern="checkerboard")
     ref = create_synthetic_image(pattern="checkerboard")

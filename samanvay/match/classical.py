@@ -1,32 +1,33 @@
 import numpy as np
 import cv2
 from samanvay.types import CanonicalImage, MatchSet
+from samanvay.match.detect import detect_keypoints
+from samanvay.match.describe import describe_keypoints
 
 def match_images(source: CanonicalImage, reference: CanonicalImage, config: dict = None) -> MatchSet:
+    """
+    Orchestrates the matching of source and reference images.
+    Delegates keypoint detection and description tasks to separate modules.
+    """
     if config is None:
         config = {}
-    
+        
     method_name = config.get("method", "sift").lower()
     ratio_thresh = config.get("ratio_threshold", 0.75)
     
-    # Convert image arrays to uint8 in [0, 255] for OpenCV detector
-    # Ensure they are valid 2D numpy arrays
+    # Pre-process image boundaries/types
     src_img = (source.albedo * 255).astype(np.uint8)
     ref_img = (reference.albedo * 255).astype(np.uint8)
     
-    if method_name == "sift":
-        detector = cv2.SIFT_create()
-        matcher = cv2.BFMatcher(cv2.NORM_L2)
-    elif method_name == "orb":
-        detector = cv2.ORB_create(nfeatures=2000)
-        matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
-    else:
-        raise ValueError(f"Unknown matching method: {method_name}")
-        
-    kp1, desc1 = detector.detectAndCompute(src_img, None)
-    kp2, desc2 = detector.detectAndCompute(ref_img, None)
+    # 1. Feature Detection
+    kps_src = detect_keypoints(src_img, method=method_name, pc_map=source.pc)
+    kps_ref = detect_keypoints(ref_img, method=method_name, pc_map=reference.pc)
     
-    if desc1 is None or desc2 is None or len(kp1) == 0 or len(kp2) == 0:
+    # 2. Feature Description
+    kps_src, desc_src = describe_keypoints(src_img, kps_src, method=method_name, pc_orient=source.pc_orient)
+    kps_ref, desc_ref = describe_keypoints(ref_img, kps_ref, method=method_name, pc_orient=reference.pc_orient)
+    
+    if len(kps_src) == 0 or len(kps_ref) == 0 or desc_src.size == 0 or desc_ref.size == 0:
         return MatchSet(
             src_xy=np.zeros((0, 2)),
             ref_xy=np.zeros((0, 2)),
@@ -35,7 +36,20 @@ def match_images(source: CanonicalImage, reference: CanonicalImage, config: dict
             cell=np.zeros((0,), dtype=np.int32)
         )
         
-    raw_matches = matcher.knnMatch(desc1, desc2, k=2)
+    # 3. Cross-Matching
+    if method_name == "orb":
+        matcher = cv2.BFMatcher(cv2.NORM_HAMMING)
+    else:
+        matcher = cv2.BFMatcher(cv2.NORM_L2)
+        
+    # Relax ratio threshold for L2 descriptor matching as orientation histograms are self-similar
+    thresh = config.get("ratio_threshold", 0.9 if method_name == "l2" else 0.75)
+        
+    if len(desc_ref) < 2:
+        # Fallback to 1-nn match if reference set is too small
+        raw_matches = [[m[0]] for m in matcher.knnMatch(desc_src, desc_ref, k=1) if len(m) > 0]
+    else:
+        raw_matches = matcher.knnMatch(desc_src, desc_ref, k=2)
     
     src_pts = []
     ref_pts = []
@@ -44,25 +58,24 @@ def match_images(source: CanonicalImage, reference: CanonicalImage, config: dict
     for m in raw_matches:
         if len(m) == 2:
             m1, m2 = m
-            if m1.distance < ratio_thresh * m2.distance:
-                src_pts.append(kp1[m1.queryIdx].pt)
-                ref_pts.append(kp2[m1.trainIdx].pt)
-                # Normalised match quality metric
+            if m1.distance == 0 or m1.distance < thresh * m2.distance:
+                src_pts.append(kps_src[m1.queryIdx].pt)
+                ref_pts.append(kps_ref[m1.trainIdx].pt)
                 scores.append(1.0 - (m1.distance / (m2.distance + 1e-6)))
         elif len(m) == 1:
             m1 = m[0]
-            src_pts.append(kp1[m1.queryIdx].pt)
-            ref_pts.append(kp2[m1.trainIdx].pt)
+            src_pts.append(kps_src[m1.queryIdx].pt)
+            ref_pts.append(kps_ref[m1.trainIdx].pt)
             scores.append(1.0)
             
     src_xy = np.array(src_pts, dtype=np.float64).reshape(-1, 2)
     ref_xy = np.array(ref_pts, dtype=np.float64).reshape(-1, 2)
     score_arr = np.array(scores, dtype=np.float32)
     
-    method_id = 0 if method_name == "sift" else 1
+    method_map = {"sift": 0, "orb": 1, "l2": 2}
+    method_id = method_map.get(method_name, 0)
     method_arr = np.full(len(src_xy), method_id, dtype=np.uint8)
     
-    # Calculate cell assignments based on source points in a 4x4 grid
     cell_arr = np.zeros(len(src_xy), dtype=np.int32)
     if len(src_xy) > 0:
         h, w = src_img.shape[:2]
