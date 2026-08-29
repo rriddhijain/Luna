@@ -7,14 +7,19 @@ def match_tiled(
     reference: CanonicalImage,
     grid_n: int = 4,
     halo_px: int = 64,
-    config: dict = None
+    config: dict = None,
+    cell_budgets: dict = None
 ) -> MatchSet:
     """
     Splits source and reference images into grid_n x grid_n cells.
-    Matches feature points within each cell including a halo, and filters out duplicates outside boundaries.
+    Matches feature points within each cell including a halo, and enforces uniformity cell budgets (I6):
+    - Underpopulated cells: Dynamically relaxes the ratio threshold to harvest more matches.
+    - Overpopulated cells: Restricts output to the top-K matches based on score.
     """
     if config is None:
         config = {}
+    if cell_budgets is None:
+        cell_budgets = {}
         
     src_h, src_w = source.albedo.shape[:2]
     ref_h, ref_w = reference.albedo.shape[:2]
@@ -34,6 +39,11 @@ def match_tiled(
     for row in range(grid_n):
         for col in range(grid_n):
             cell_id = col + grid_n * row
+            
+            # Retrieve budget for this specific cell
+            budget = cell_budgets.get(cell_id, {})
+            min_matches = budget.get("min_matches", 5)
+            max_matches = budget.get("max_matches", 50)
             
             # Source bounds with halo
             src_y0 = max(0, row * tile_h_src - halo_px)
@@ -67,32 +77,65 @@ def match_tiled(
             if src_tile.albedo.size == 0 or ref_tile.albedo.size == 0:
                 continue
                 
-            # Match current tile
-            tile_matches = match_images(src_tile, ref_tile, config)
+            # Matching loop with dynamic relaxation of constraints (ratio threshold)
+            # if we get fewer than min_matches.
+            current_config = config.copy()
+            initial_ratio = config.get("ratio_threshold", 0.75)
             
-            if len(tile_matches.src_xy) > 0:
-                # Project coordinates back to global space
-                src_global = tile_matches.src_xy + np.array([src_x0, src_y0])
-                ref_global = tile_matches.ref_xy + np.array([ref_x0, ref_y0])
+            tile_matches = None
+            src_global = np.zeros((0, 2))
+            ref_global = np.zeros((0, 2))
+            scores_global = np.zeros((0,))
+            methods_global = np.zeros((0,), dtype=np.uint8)
+            
+            core_y0 = row * tile_h_src
+            core_y1 = (row + 1) * tile_h_src if row < grid_n - 1 else src_h
+            core_x0 = col * tile_w_src
+            core_x1 = (col + 1) * tile_w_src if col < grid_n - 1 else src_w
+            
+            for attempt in range(4): # up to 4 iterations (e.g. 0.75 -> 0.80 -> 0.85 -> 0.90)
+                ratio_val = min(0.95, initial_ratio + attempt * 0.05)
+                current_config["ratio_threshold"] = ratio_val
                 
-                # Check if points fall in the core region of the tile to avoid duplicate matching
-                core_y0 = row * tile_h_src
-                core_y1 = (row + 1) * tile_h_src if row < grid_n - 1 else src_h
-                core_x0 = col * tile_w_src
-                core_x1 = (col + 1) * tile_w_src if col < grid_n - 1 else src_w
+                tile_matches = match_images(src_tile, ref_tile, current_config)
                 
-                in_core = (
-                    (src_global[:, 0] >= core_x0) & (src_global[:, 0] < core_x1) &
-                    (src_global[:, 1] >= core_y0) & (src_global[:, 1] < core_y1)
-                )
-                
-                if np.any(in_core):
-                    all_src_xy.append(src_global[in_core])
-                    all_ref_xy.append(ref_global[in_core])
-                    all_scores.append(tile_matches.score[in_core])
-                    all_methods.append(tile_matches.method[in_core])
-                    all_cells.append(np.full(np.sum(in_core), cell_id, dtype=np.int32))
+                if len(tile_matches.src_xy) > 0:
+                    src_candidates = tile_matches.src_xy + np.array([src_x0, src_y0])
+                    ref_candidates = tile_matches.ref_xy + np.array([ref_x0, ref_y0])
                     
+                    # Filter candidates that fall strictly in the core tile boundary
+                    in_core = (
+                        (src_candidates[:, 0] >= core_x0) & (src_candidates[:, 0] < core_x1) &
+                        (src_candidates[:, 1] >= core_y0) & (src_candidates[:, 1] < core_y1)
+                    )
+                    
+                    if np.any(in_core):
+                        src_global = src_candidates[in_core]
+                        ref_global = ref_candidates[in_core]
+                        scores_global = tile_matches.score[in_core]
+                        methods_global = tile_matches.method[in_core]
+                        
+                # Break early if we satisfied the minimum match budget
+                if len(src_global) >= min_matches:
+                    break
+                    
+            # Enforce max_matches by taking top-K sorted by score
+            if len(src_global) > max_matches:
+                sort_idx = np.argsort(scores_global)[::-1] # descending sort
+                top_idx = sort_idx[:max_matches]
+                
+                src_global = src_global[top_idx]
+                ref_global = ref_global[top_idx]
+                scores_global = scores_global[top_idx]
+                methods_global = methods_global[top_idx]
+                
+            if len(src_global) > 0:
+                all_src_xy.append(src_global)
+                all_ref_xy.append(ref_global)
+                all_scores.append(scores_global)
+                all_methods.append(methods_global)
+                all_cells.append(np.full(len(src_global), cell_id, dtype=np.int32))
+                
     if len(all_src_xy) > 0:
         src_xy = np.vstack(all_src_xy)
         ref_xy = np.vstack(all_ref_xy)
