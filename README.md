@@ -33,6 +33,17 @@ Honest, because a README that oversells is found out in the first demo.
 
 ---
 
+## Bringing real data in
+
+Have real lunar products? **[docs/DATA.md](docs/DATA.md)** is the whole path: where files
+go, what metadata matters, and how to tell whether a real result is trustworthy. Start by
+preflighting the pair — it exits non-zero if the data cannot work, and prints the exact
+register command if it can:
+
+```bash
+samanvay check --source data/real/src.tif --ref data/real/ref.tif --dem data/real/dem.tif
+```
+
 ## Quickstart
 
 Python 3.11. Every command below is run from the repository root.

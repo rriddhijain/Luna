@@ -140,6 +140,28 @@ def dashboard(runs_root, out_path, viewers):
     click.echo(f"Dashboard written to {path}")
 
 
+@cli.command()
+@click.option("--source", required=True, type=click.Path(), help="Source (moving) image")
+@click.option("--ref", required=True, type=click.Path(), help="Reference (fixed) image")
+@click.option("--dem", "dem_path", type=click.Path(), help="Optional DEM")
+def check(source, ref, dem_path):
+    """Preflight a data pair: what parsed, what will run, and the command to run next."""
+    from samanvay.io.preflight import check_pair, format_report
+
+    result = check_pair(source, ref, dem_path)
+    report = format_report(result)
+    colour = {"ready": "green", "ready_degraded": "yellow", "blocked": "red"}
+    for line in report.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("VERDICT:"):
+            click.echo(click.style(line, fg=colour.get(result["verdict"]), bold=True))
+        elif stripped.startswith("- ") and "fix:" not in line:
+            click.echo(line)
+        else:
+            click.echo(line)
+    raise SystemExit(1 if result["verdict"] == "blocked" else 0)
+
+
 @cli.command("show-config")
 @click.option("--config", "config_path", type=click.Path(exists=True))
 @click.option("--set", "sets", multiple=True, metavar="KEY=VALUE")

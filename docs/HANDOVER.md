@@ -117,6 +117,8 @@ Ordered by value. Nothing here is structural — the pipeline runs end to end.
 1. **Real data.** ISSDC Pradan + LROC registration, then a Tier-B insurance pair
    (NAC ↔ NAC, same site, very different incidence) which needs no ISSDC access at all.
    This is the only thing standing between the project and a real-data claim.
+   **The intake path is [docs/DATA.md](DATA.md), and `samanvay check` preflights a pair
+   before you spend time on a registration.**
 2. **Push a branch and watch CI go green**, and run `docker compose build` once. Both are
    unverifiable offline.
 3. **Forward `geotransform_exact` / `geotransform_max_error_m`** through
