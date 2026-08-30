@@ -1,0 +1,157 @@
+{
+  "note": "Accuracy-vs-delta-sun-azimuth series. Geometry, seed, DEM, albedo, sun elevation and noise are identical in every entry; only the source sun azimuth changes. Register each pair, score against gt_points_holdout in that pair's gt.json, and plot RMSE against delta_sun_az_deg.",
+  "ref_sun_az_deg": 45.0,
+  "sun_el_deg": 25.0,
+  "ref_shape": [
+    512,
+    512
+  ],
+  "seed": 0,
+  "n_pairs": 6,
+  "pairs": [
+    {
+      "delta_sun_az_deg": 0.0,
+      "dir": "fixtures/dsun_sweep/dsun_00",
+      "source": "fixtures/dsun_sweep/dsun_00/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_00/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_00/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 10.0,
+      "dir": "fixtures/dsun_sweep/dsun_10",
+      "source": "fixtures/dsun_sweep/dsun_10/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_10/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_10/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 20.0,
+      "dir": "fixtures/dsun_sweep/dsun_20",
+      "source": "fixtures/dsun_sweep/dsun_20/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_20/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_20/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 30.0,
+      "dir": "fixtures/dsun_sweep/dsun_30",
+      "source": "fixtures/dsun_sweep/dsun_30/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_30/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_30/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 40.0,
+      "dir": "fixtures/dsun_sweep/dsun_40",
+      "source": "fixtures/dsun_sweep/dsun_40/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_40/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_40/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 50.0,
+      "dir": "fixtures/dsun_sweep/dsun_50",
+      "source": "fixtures/dsun_sweep/dsun_50/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_50/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_50/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    }
+  ]
+}

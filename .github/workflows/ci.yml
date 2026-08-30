@@ -1,0 +1,140 @@
+# SAMANVAY CI — Seat 5 · deployment. The team rule is "main is always green".
+#
+# Nothing here is continue-on-error and nothing is `|| true`. A step that cannot pass fails
+# the build, loudly, on the commit that broke it. A workflow that goes yellow instead of red
+# is a workflow people stop reading.
+#
+# Three gates, in the order that fails cheapest first:
+#   1. the pytest suite
+#   2. an end-to-end smoke run on a small synthetic pair — six artifacts on disk, metrics
+#      parsing with the contract keys present
+#   3. scripts/verify_airgap.py — no external URL in any generated HTML, no import outside
+#      requirements.lock
+#
+# Deliberately NOT gated: formatting, import order, type checks. Nobody ratified a style
+# gate, and a red build for a stray blank line is how a team learns to ignore CI.
+#
+# Deliberately NOT gated: a numeric accuracy threshold. bench/baselines.md now has real
+# numbers but two of the four matcher arms are red, so any RMSE bar would be a line drawn
+# around today's failures. The smoke test asserts structure, not a quality claim. Add the
+# threshold when the arms work, and say so in baselines.md.
+#
+# THIS WORKFLOW HAS NEVER EXECUTED ON GITHUB. It was written and reasoned about offline;
+# the pytest and smoke-test bodies were run locally on macOS, the runner steps were not.
+# Push a branch and watch it go green before anyone says "CI is green".
+
+name: ci
+
+on:
+  push:
+  pull_request:
+
+# A new push to the same ref cancels the old run; the last commit is the one that matters.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash -euo pipefail {0}
+
+env:
+  MPLBACKEND: Agg          # matplotlib must never look for a display on a headless runner
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20    # backstop: a hung job dies rather than burning an hour
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          # 3.11, not "3.x": rasterio/GDAL and opencv-python-headless publish manylinux
+          # wheels for 3.11 and none for 3.14. Same version as the dev venv and the image,
+          # so CI is not a third environment nobody tests.
+          cache: pip
+          cache-dependency-path: requirements.lock
+
+      - name: Install the locked environment
+        run: |
+          python -m pip install --upgrade pip
+          # --no-deps: requirements.lock is the full transitive closure. Letting pip resolve
+          # pyproject's floors here would silently install something other than the pinned
+          # versions and the word "locked" would stop meaning anything.
+          #
+          # The lock was generated on macOS/arm64. Every pin is either pure Python or ships
+          # a linux x86_64 manylinux wheel; if this step ever fails on a missing wheel, fix
+          # the pin, do not relax it to a range.
+          pip install --no-deps -r requirements.lock
+          pip install --no-deps -e .
+          python -c "import cv2, rasterio, skimage, matplotlib, samanvay; print('env ok')"
+
+      - name: Unit tests
+        timeout-minutes: 10   # hard timeout: pytest-timeout is not a dependency, the runner enforces it
+        run: pytest -q --durations=10
+
+      # One step, one budget: generate a small synthetic pair, register it, prove the six
+      # artifacts landed and that metrics.json carries the contract keys.
+      - name: End-to-end smoke test
+        timeout-minutes: 5
+        run: |
+          samanvay fixture --out-dir fixtures/ci_smoke --size 256 --seed 0
+          samanvay register \
+            --source fixtures/ci_smoke/source.tif \
+            --ref    fixtures/ci_smoke/reference.tif \
+            --out    runs/ci_smoke
+          python - <<'PY'
+          import json, os, sys
+
+          RUN = "runs/ci_smoke"
+          ARTIFACTS = ["registered.tif", "matches.csv", "transform.json",
+                       "metrics.json", "provenance.json", "report.html"]
+          # Keys the metrics contract promises. A null value is legal and honest (unknown
+          # quantities are reported as null); a missing key is a contract break.
+          METRIC_KEYS = ["rmse_px", "inlier_count", "inlier_ratio",
+                         "coverage_pct", "dispersion_cv", "grid_n", "runtime_s"]
+
+          bad = [f for f in ARTIFACTS
+                 if not os.path.isfile(os.path.join(RUN, f))
+                 or os.path.getsize(os.path.join(RUN, f)) == 0]
+          if bad:
+              sys.exit(f"missing or empty run artifacts: {bad}")
+
+          with open(os.path.join(RUN, "metrics.json")) as f:
+              metrics = json.load(f)
+          absent = [k for k in METRIC_KEYS if k not in metrics]
+          if absent:
+              sys.exit(f"metrics.json is missing contract keys: {absent}")
+
+          # The one non-structural assertion, and deliberately not an accuracy one:
+          # verify_status is binary ("ok"/"failed"), so this catches a pipeline that ran
+          # to completion while producing nothing usable. An RMSE threshold here would be
+          # a line drawn around today's failures — see the header note.
+          if metrics.get("verify_status") != "ok":
+              sys.exit(f"verify stage did not succeed: verify_status={metrics.get('verify_status')!r}")
+
+          with open(os.path.join(RUN, "transform.json")) as f:
+              params = json.load(f)["params"]
+          if len(params) != 3 or any(len(row) != 3 for row in params):
+              sys.exit(f"transform.json params is not 3x3: {params}")
+
+          print("smoke ok:", {k: metrics[k] for k in METRIC_KEYS})
+          PY
+
+      # Runs last, and over a tree that now contains a freshly generated report.html — so
+      # it checks the HTML the pipeline actually produces on this commit, not just the
+      # HTML someone committed.
+      - name: Air-gap gate
+        run: python scripts/verify_airgap.py
+
+      # Only on a red build: the run directory is what makes a CI-only failure debuggable.
+      - name: Upload smoke run on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-run
+          path: runs/ci_smoke
+          if-no-files-found: ignore

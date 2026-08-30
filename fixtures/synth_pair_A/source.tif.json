@@ -1,0 +1,29 @@
+{
+  "product_id": "synth_source",
+  "instrument": "SYNTH-OHRC",
+  "synthetic": true,
+  "gsd_m": 0.5,
+  "sun_az_deg": 35.0,
+  "sun_az_world_deg": 45.0,
+  "sun_az_frame": "image",
+  "sun_el_deg": 25.0,
+  "incidence_deg": 65.0,
+  "emission_deg": 0.0,
+  "shape": [
+    1715,
+    1715
+  ],
+  "dtype": "uint16",
+  "geotransform": [
+    0.490813591723832,
+    -0.0954044976882724,
+    172.4239760678812,
+    -0.09540449768827242,
+    -0.4908135917238321,
+    1022.3819974796507
+  ],
+  "crs": "+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=1737400 +b=1737400 +units=m +no_defs",
+  "geotransform_exact": false,
+  "geotransform_max_error_m": 24.603774590978194,
+  "note": "sun_az_deg is in THIS image's pixel frame; sun_az_world_deg is the reference/world frame. incidence_deg/emission_deg are scene-centre values on the reference sphere, not per-pixel. The geotransform is a deliberately imperfect prior."
+}

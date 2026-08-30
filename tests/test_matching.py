@@ -52,7 +52,7 @@ def test_tiled_matching():
     src = create_synthetic_image(pattern="checkerboard")
     ref = create_synthetic_image(pattern="checkerboard")
     
-    matches = match_tiled(src, ref, grid_n=2, halo_px=16, config={"method": "sift"})
+    matches, cell_info = match_tiled(src, ref, grid_n=2, halo_px=16, config={"method": "sift"})
     assert isinstance(matches.src_xy, np.ndarray)
     assert len(matches.src_xy) > 0
     assert np.all(matches.cell >= 0)
@@ -68,7 +68,7 @@ def test_tiled_matching_with_budgets():
         1: {"min_matches": 1, "max_matches": 2}
     }
     
-    matches = match_tiled(
+    matches, cell_info = match_tiled(
         src, ref,
         grid_n=2,
         halo_px=16,

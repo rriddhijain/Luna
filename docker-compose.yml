@@ -1,6 +1,92 @@
+# SAMANVAY — Seat 5 · deployment. One command per artifact.
+#
+# A judge should not have to reconstruct a flag string from a README. Each service below
+# produces exactly one thing and is run the same way:
+#
+#   docker compose build            # once
+#   docker compose run --rm fixture     # -> fixtures/synth_pair_A/  (the pair to register)
+#   docker compose run --rm demo        # -> runs/demo_01/           (the six artifacts)
+#   docker compose run --rm ablate      # -> runs/ablate/ablation.md (the innovation table)
+#   docker compose run --rm bench       # -> runs/sweep/bench.md     (accuracy vs delta-sun)
+#   docker compose run --rm test        # the pytest suite, inside the image
+#   docker compose run --rm airgap      # the no-external-URL / no-unlocked-import gate
+#   docker compose up dashboard         # http://localhost:8000/viewer/
+#
+# `--rm` because these are one-shot jobs, not daemons; without it every run leaves a
+# stopped container behind.
+#
+# Run fixture before demo/ablate: they register a pair that fixture writes.
+
+x-samanvay: &samanvay
+  build: .
+  image: samanvay:local
+  # The working directory is mounted, not baked: outputs land on the host where the judge
+  # can open them, and re-running after an edit needs no rebuild. It shadows /app from the
+  # image, which is what we want — the image supplies the interpreter and the wheels, the
+  # mount supplies the code and the data.
+  volumes:
+    - .:/app
+  working_dir: /app
+  environment:
+    MPLBACKEND: Agg          # also set in the image; repeated here so an override cannot lose it
+    PYTHONPATH: /app
+  # Container uid 1000 == the image's `samanvay` user. On Linux, set UID/GID in a .env file
+  # if your host account is not 1000, or the mounted outputs come back owned by 1000.
+  init: true                 # so Ctrl-C actually stops a long run
+
 services:
-  samanvay:
-    build: .
-    volumes:
-      - .:/app
-    command: register --source data/source.tif --ref data/reference.tif --out runs/demo_01
+  # The synthetic ground-truth pair everything else registers. Deterministic: seed 0
+  # reproduces every byte.
+  fixture:
+    <<: *samanvay
+    command: ["fixture", "--out-dir", "fixtures/synth_pair_A"]
+
+  # The headline run: source + reference in, six artifacts out.
+  demo:
+    <<: *samanvay
+    command:
+      - register
+      - --source
+      - fixtures/synth_pair_A/source.tif
+      - --ref
+      - fixtures/synth_pair_A/reference.tif
+      - --out
+      - runs/demo_01
+
+  # The innovation argument: the same pair, one stage switched off at a time.
+  ablate:
+    <<: *samanvay
+    entrypoint: ["python", "-m", "bench.ablate"]
+    command:
+      - --source
+      - fixtures/synth_pair_A/source.tif
+      - --ref
+      - fixtures/synth_pair_A/reference.tif
+      - --out
+      - runs/ablate
+
+  # Accuracy against ground truth across the delta-sun-azimuth sweep.
+  bench:
+    <<: *samanvay
+    entrypoint: ["python", "-m", "bench.harness"]
+    command: ["--manifest", "fixtures/dsun_sweep/manifest.json", "--out", "runs/sweep"]
+
+  test:
+    <<: *samanvay
+    entrypoint: ["python", "-m", "pytest"]
+    command: ["-q"]
+
+  airgap:
+    <<: *samanvay
+    entrypoint: ["python", "scripts/verify_airgap.py"]
+    command: []
+
+  # The only long-running service. Serves the repo root so viewer/index.html can fetch
+  # runs/<id>/*.json — a file:// page cannot, which is the usual reason the viewer looks
+  # empty. stdlib http.server: nothing to install, nothing listening beyond localhost.
+  dashboard:
+    <<: *samanvay
+    entrypoint: ["python", "-m", "http.server", "8000", "--bind", "0.0.0.0"]
+    command: []
+    ports:
+      - "8000:8000"

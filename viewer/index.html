@@ -1,337 +1,129 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SAMANVAY — Lunar Image Registration Visualiser</title>
-    
-    <!-- OpenSeadragon CDN -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/openseadragon.min.js"></script>
-    <!-- Google Fonts Outfit & JetBrains Mono -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400&family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    
-    <style>
-        :root {
-            --bg-base: #0a0c10;
-            --bg-card: rgba(18, 22, 30, 0.7);
-            --border-glow: rgba(0, 188, 212, 0.25);
-            --border-subtle: rgba(255, 255, 255, 0.08);
-            --accent-cyan: #00bcd4;
-            --accent-purple: #9c27b0;
-            --text-main: #f5f6f9;
-            --text-muted: #8a99ad;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            background-color: var(--bg-base);
-            color: var(--text-main);
-            font-family: 'Outfit', sans-serif;
-            min-height: 100vh;
-            overflow-x: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* Ambient background glow */
-        body::before {
-            content: '';
-            position: absolute;
-            top: -10%;
-            left: -10%;
-            width: 120%;
-            height: 120%;
-            background: radial-gradient(circle at 10% 20%, rgba(0, 188, 212, 0.05) 0%, transparent 40%),
-                        radial-gradient(circle at 90% 80%, rgba(156, 39, 176, 0.05) 0%, transparent 40%);
-            z-index: -1;
-            pointer-events: none;
-        }
-
-        header {
-            padding: 20px 40px;
-            border-bottom: 1px solid var(--border-subtle);
-            backdrop-filter: blur(10px);
-            background: rgba(10, 12, 16, 0.5);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .logo-badge {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-            color: #000;
-            font-weight: 800;
-            padding: 6px 12px;
-            border-radius: 6px;
-            font-size: 14px;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
-
-        h1 {
-            font-size: 22px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        .app-container {
-            display: grid;
-            grid-template-columns: 350px 1fr;
-            flex: 1;
-            gap: 20px;
-            padding: 20px;
-            max-height: calc(100vh - 80px);
-        }
-
-        /* Sidebar Glassmorphism */
-        .sidebar {
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
-            border-radius: 16px;
-            padding: 24px;
-            backdrop-filter: blur(16px);
-            display: flex;
-            flex-direction: column;
-            gap: 24px;
-            overflow-y: auto;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-
-        .section-title {
-            font-size: 12px;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: var(--text-muted);
-            margin-bottom: 12px;
-            font-weight: 600;
-        }
-
-        .metric-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .metric-card {
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid var(--border-subtle);
-            border-radius: 12px;
-            padding: 16px;
-            text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .metric-card:hover {
-            border-color: var(--accent-cyan);
-            box-shadow: 0 0 15px rgba(0, 188, 212, 0.1);
-        }
-
-        .metric-value {
-            font-size: 20px;
-            font-weight: 800;
-            color: var(--accent-cyan);
-            font-family: 'JetBrains Mono', monospace;
-            margin-top: 4px;
-        }
-
-        .metric-label {
-            font-size: 11px;
-            color: var(--text-muted);
-        }
-
-        .control-group {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .btn {
-            background: linear-gradient(135deg, rgba(0, 188, 212, 0.2), rgba(156, 39, 176, 0.2));
-            border: 1px solid var(--accent-cyan);
-            color: var(--text-main);
-            padding: 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s ease;
-            text-align: center;
-            text-decoration: none;
-        }
-
-        .btn:hover {
-            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-            color: #000;
-            box-shadow: 0 0 20px rgba(0, 188, 212, 0.4);
-            transform: translateY(-1px);
-        }
-
-        /* Visualiser Frame */
-        .visualizer-container {
-            background: var(--bg-card);
-            border: 1px solid var(--border-subtle);
-            border-radius: 16px;
-            overflow: hidden;
-            display: grid;
-            grid-template-rows: 50px 1fr;
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-        }
-
-        .viewer-toolbar {
-            background: rgba(0, 0, 0, 0.2);
-            border-bottom: 1px solid var(--border-subtle);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-        }
-
-        .viewer-main {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1px;
-            background: var(--border-subtle);
-            height: 100%;
-        }
-
-        .openseadragon-view {
-            background: #141720;
-            height: 100%;
-            position: relative;
-        }
-
-        .view-label {
-            position: absolute;
-            top: 15px;
-            left: 15px;
-            background: rgba(0, 0, 0, 0.7);
-            border: 1px solid var(--border-subtle);
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            z-index: 10;
-        }
-
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar {
-            width: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: var(--border-subtle);
-            border-radius: 3px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-muted);
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SAMANVAY — run inspector</title>
+<!--
+  Seat 4 · viewer shell. Every number on this page comes from the run payload
+  inlined into #samanvay-run by samanvay.report.dashboard.build_viewer; this file
+  on its own carries no metric at all and says so when opened directly.
+  Zero external assets: no CDN, no webfont link, no fetch. It opens from file://.
+-->
+<style>
+:root{--bg:#0a0c10;--card:#12161e;--border:#242a35;--cyan:#00bcd4;--purple:#9c27b0;
+      --text:#f5f6f9;--muted:#8a99ad;--amber:#ffb300;--outlier:#ff5370;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Outfit',system-ui,-apple-system,sans-serif;
+     min-height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{padding:14px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;
+       justify-content:space-between;gap:16px;background:#0d1117}
+.logo{display:flex;align-items:center;gap:12px}
+.badge{background:linear-gradient(135deg,var(--cyan),var(--purple));color:#000;font-weight:800;
+       padding:5px 10px;border-radius:6px;font-size:12px;letter-spacing:1px;text-transform:uppercase}
+h1{font-size:18px;font-weight:600}
+.sub{color:var(--muted);font-size:12px}
+.app{display:grid;grid-template-columns:330px 1fr;gap:16px;padding:16px;flex:1;min-height:0}
+.side{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;
+      overflow-y:auto;display:flex;flex-direction:column;gap:20px}
+.ptitle{font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--muted);margin-bottom:10px}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;padding:12px;
+      text-align:center}
+.card .v{font-size:18px;font-weight:800;color:var(--cyan);font-family:'JetBrains Mono',ui-monospace,monospace}
+.card .l{font-size:11px;color:var(--muted)}
+.card.none .v{color:var(--muted)}
+.card.warnflag{border-color:var(--amber)}
+.card.warnflag .v{color:var(--amber)}
+.warn{border-left:3px solid var(--amber);background:rgba(255,179,0,.08);padding:8px 12px;border-radius:4px;
+      color:var(--amber);font-size:12px;line-height:1.5}
+.err{border-left:3px solid var(--outlier);background:rgba(255,83,112,.08);padding:8px 12px;border-radius:4px;
+     color:var(--outlier);font-size:12px;line-height:1.5}
+.note{color:var(--muted);font-size:11px;line-height:1.6}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button{background:rgba(0,188,212,.12);border:1px solid var(--border);color:var(--text);padding:7px 11px;
+       border-radius:7px;cursor:pointer;font-size:12px;font-family:inherit}
+button:hover{border-color:var(--cyan)}
+button.on{background:linear-gradient(135deg,var(--cyan),var(--purple));color:#000;font-weight:700}
+label.chk{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}
+input[type=range]{width:100%;accent-color:var(--cyan)}
+.kv{font-size:12px;line-height:1.8;font-family:'JetBrains Mono',ui-monospace,monospace;color:var(--muted)}
+.kv b{color:var(--text);font-weight:400}
+.stage{display:grid;grid-template-columns:78px 1fr 54px;gap:8px;align-items:center;font-size:11px;margin:3px 0}
+.track{background:#1b2129;border-radius:3px;height:8px}
+.fill{background:linear-gradient(90deg,var(--cyan),var(--purple));height:8px;border-radius:3px}
+.stage .v{font-family:ui-monospace,monospace;color:var(--muted);text-align:right}
+.ugrid{display:grid;gap:2px;width:max-content}
+.cell{width:26px;height:26px;border-radius:3px;display:flex;align-items:center;justify-content:center;
+      font-size:10px;font-family:ui-monospace,monospace;border:1px solid var(--border)}
+.s-populated{background:#123039}
+.s-insufficient_texture{background:repeating-linear-gradient(45deg,#3a2f12,#3a2f12 4px,#0a0c10 4px,#0a0c10 8px);
+      border-color:var(--amber)}
+.s-masked_invalid{background:repeating-linear-gradient(-45deg,#232833,#232833 4px,#0a0c10 4px,#0a0c10 8px);
+      border-color:var(--muted)}
+.s-unknown{background:radial-gradient(circle,#2b1f2e 1.5px,#0a0c10 1.5px);background-size:6px 6px;
+      border-color:var(--purple)}
+.legend{display:flex;flex-direction:column;gap:3px;font-size:10px;color:var(--muted);margin-top:8px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-2px;margin-right:5px;
+      border:1px solid var(--border)}
+.stage-wrap,.grid-wrap{min-height:10px}
+.main{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;
+      display:grid;grid-template-rows:44px 1fr;min-height:0}
+.bar{background:rgba(0,0,0,.25);border-bottom:1px solid var(--border);display:flex;align-items:center;
+     justify-content:space-between;padding:0 16px;gap:16px;font-size:12px;color:var(--muted)}
+.panes{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);min-height:0}
+.pane{position:relative;background:#0f1219;min-height:0;overflow:hidden}
+.pane canvas{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+.pane canvas:active{cursor:grabbing}
+.plabel{position:absolute;top:10px;left:10px;background:rgba(0,0,0,.7);border:1px solid var(--border);
+        padding:3px 9px;border-radius:6px;font-size:11px;font-weight:600;z-index:5}
+.pnote{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+       color:var(--muted);font-size:12px;padding:24px;pointer-events:none}
+a{color:var(--cyan)}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
 </head>
 <body>
 
-    <header>
-        <div class="logo-area">
-            <span class="logo-badge">P0 Prototype</span>
-            <h1>SAMANVAY</h1>
-        </div>
-        <div style="font-size: 14px; color: var(--text-muted);">
-            Saturday 29 Aug 2026 &bull; Day 2 Skeleton
-        </div>
-    </header>
+<header>
+  <div class="logo"><span class="badge">SAMANVAY</span><h1 id="run-name">no run loaded</h1></div>
+  <div class="sub" id="run-sub"></div>
+</header>
 
-    <div class="app-container">
-        <div class="sidebar">
-            <div>
-                <div class="section-title">Calibration Run</div>
-                <h3 style="font-weight: 600; font-size: 16px;">demo_01 (Synthetic Crater)</h3>
-                <p style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">Illumination robust georeferencing</p>
-            </div>
-
-            <div>
-                <div class="section-title">Metrics</div>
-                <div class="metric-grid">
-                    <div class="metric-card">
-                        <div class="metric-label">RMSE</div>
-                        <div class="metric-value">0.42px</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">Inliers</div>
-                        <div class="metric-value">48/50</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">Coverage</div>
-                        <div class="metric-value">93.8%</div>
-                    </div>
-                    <div class="metric-card">
-                        <div class="metric-label">Runtime</div>
-                        <div class="metric-value">0.18s</div>
-                    </div>
-                </div>
-            </div>
-
-            <div>
-                <div class="section-title">Controls</div>
-                <div class="control-group">
-                    <button class="btn" onclick="toggleOverlay()">Toggle Match Overlay</button>
-                    <button class="btn" onclick="toggleSwipe()">Toggle Swipe Mode</button>
-                </div>
-            </div>
-
-            <div style="margin-top: auto;">
-                <div class="section-title">Status</div>
-                <div style="display: flex; align-items: center; gap: 8px; font-size: 13px;">
-                    <span style="width: 8px; height: 8px; background: #4caf50; border-radius: 50%;"></span>
-                    Pipeline integrated successfully.
-                </div>
-            </div>
-        </div>
-
-        <div class="visualizer-container">
-            <div class="viewer-toolbar">
-                <div style="font-weight: 600; font-size: 13px; color: var(--text-muted);">
-                    Interactive Sync Pan & Zoom Viewport
-                </div>
-                <div style="font-size: 12px; display: flex; gap: 15px;">
-                    <span>Grid Cell size: 256x256</span>
-                    <span>Method: L0 Baseline</span>
-                </div>
-            </div>
-            
-            <div class="viewer-main">
-                <div id="source-view" class="openseadragon-view">
-                    <span class="view-label">Source (Warped)</span>
-                </div>
-                <div id="ref-view" class="openseadragon-view">
-                    <span class="view-label">Reference Frame</span>
-                </div>
-            </div>
-        </div>
+<div class="app">
+  <div class="side">
+    <div id="banners"></div>
+    <div><div class="ptitle">metrics</div><div class="cards" id="cards"></div></div>
+    <div><div class="ptitle">view</div>
+      <div class="row" id="modes"></div>
+      <div style="margin-top:10px"><input type="range" id="swipe" min="0" max="100" value="50"></div>
+      <div class="row" style="margin-top:10px">
+        <label class="chk"><input type="checkbox" id="show-matches" checked> match overlay</label>
+        <label class="chk"><input type="checkbox" id="only-inliers"> inliers only</label>
+      </div>
     </div>
+    <div><div class="ptitle">selected match</div><div class="kv" id="detail">click a match point</div></div>
+    <div><div class="ptitle">stage runtime</div><div class="stage-wrap" id="stages"></div></div>
+    <div><div class="ptitle">tie-point uniformity</div><div class="grid-wrap" id="ugrid"></div></div>
+    <div><div class="ptitle">provenance</div><div class="note" id="prov"></div></div>
+  </div>
 
-    <script>
-        // OpenSeadragon sync initialization placeholder
-        console.log("OSD Initialized");
-        function toggleOverlay() {
-            alert("Match overlays will be rendered directly from runs/demo_01/matches.csv in Day 3.");
-        }
-        function toggleSwipe() {
-            alert("Swipe slider activated. Toggling swipe partition.");
-        }
-    </script>
+  <div class="main">
+    <div class="bar">
+      <span id="bar-left"></span>
+      <span id="bar-right"></span>
+    </div>
+    <div class="panes">
+      <div class="pane"><span class="plabel" id="label-a">source</span>
+        <canvas id="cvA"></canvas><div class="pnote" id="note-a"></div></div>
+      <div class="pane"><span class="plabel" id="label-b">reference</span>
+        <canvas id="cvB"></canvas><div class="pnote" id="note-b"></div></div>
+    </div>
+  </div>
+</div>
+
+<script id="samanvay-run" type="application/json">null</script>
+<script src="app.js"></script>
 </body>
 </html>

@@ -1,56 +1,54 @@
+"""Seat 3 (I/O) — product loading.
+
+Pillar: honest provenance. A product is the file on disk plus the metadata that really
+came with it; nothing here invents geometry, and a missing file is an error, not a mock.
+"""
+
 import os
-import json
+
 import numpy as np
 import rasterio
+
+from samanvay.io.metadata import normalise_meta, read_metadata
 from samanvay.types import Product
 
-def load_product(path: str) -> Product:
-    # If the file does not exist, check if there's a sidecar JSON or return mock data.
-    # This acts as the D0 escape hatch/stub.
+# Above this, attach a tiled reader instead of pulling the whole raster into RAM.
+MAX_INMEMORY_BYTES = 1 << 29  # 512 MiB
+
+
+def _nbytes(meta, path):
+    """Best estimate of the in-memory size of band 1, falling back to the file size."""
+    shape, dtype = meta.get("shape"), meta.get("dtype")
+    if shape and dtype:
+        try:
+            return int(shape[0]) * int(shape[1]) * np.dtype(dtype).itemsize
+        except TypeError:
+            pass
+    try:
+        return os.path.getsize(path)
+    except OSError:
+        return 0
+
+
+def load_product(path: str, max_bytes: int = None) -> Product:
+    """Open a raster as a Product: band 1 as an ndarray, or a TiledReader when it is large."""
     if not os.path.exists(path):
-        array = np.zeros((1024, 1024), dtype=np.float32)
-        meta = {
-            "product_id": os.path.basename(path),
-            "instrument": "MOCK",
-            "gsd_m": 1.0,
-            "sun_az_deg": 45.0,
-            "sun_el_deg": 30.0,
-            "incidence_deg": 60.0,
-            "emission_deg": 0.0,
-            "geotransform": [0.0, 1.0, 0.0, 0.0, 0.0, -1.0],
-            "crs": "EPSG:32601",
-            "shape": (1024, 1024),
-            "dtype": "float32"
-        }
-        # Try to find a JSON sidecar anyway
-        sidecar_path = path + ".json"
-        if os.path.exists(sidecar_path):
-            try:
-                with open(sidecar_path, "r") as f:
-                    meta.update(json.load(f))
-            except Exception:
-                pass
-    else:
+        raise FileNotFoundError(f"product not found: {path}")
+
+    meta = normalise_meta(read_metadata(path), path)
+    limit = MAX_INMEMORY_BYTES if max_bytes is None else max_bytes
+
+    array = None
+    if _nbytes(meta, path) > limit:
+        try:
+            from samanvay.core.tiling import open_reader
+            array = open_reader(path)
+        except ImportError:
+            # ponytail: no tiling module yet -> fall back to a full read. Upgrade path is
+            # simply that samanvay.core.tiling lands; nothing here changes.
+            array = None
+    if array is None:
         with rasterio.open(path) as src:
-            array = src.read(1).astype(np.float32)
-            meta = {
-                "product_id": os.path.basename(path),
-                "instrument": "GEOTIFF",
-                "gsd_m": 1.0,
-                "sun_az_deg": 0.0,
-                "sun_el_deg": 45.0,
-                "incidence_deg": 45.0,
-                "emission_deg": 0.0,
-                "geotransform": list(src.transform)[:6],
-                "crs": str(src.crs),
-                "shape": src.shape,
-                "dtype": str(src.dtypes[0])
-            }
-            sidecar_path = path + ".json"
-            if os.path.exists(sidecar_path):
-                try:
-                    with open(sidecar_path, "r") as f:
-                        meta.update(json.load(f))
-                except Exception:
-                    pass
+            array = src.read(1)  # native dtype: writers preserve it, photometry casts as needed
+
     return Product(path=path, array=array, meta=meta)

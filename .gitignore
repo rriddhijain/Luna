@@ -4,3 +4,11 @@ __pycache__/
 runs/
 data/
 .pytest_cache/
+
+# Fixture rasters regenerate byte-identically from a fixed seed in ~7 s:
+#   samanvay fixture --out-dir fixtures/synth_pair_A
+#   python -m synth.sweep
+# 30 MB of derivable binary does not belong in git. The ground truth that is NOT
+# derivable — gt.json, the sidecars, the per-fixture READMEs — is tracked.
+fixtures/**/*.tif
+.cache/
