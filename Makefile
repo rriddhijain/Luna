@@ -40,6 +40,8 @@ OUT     ?= runs/demo_01
 ABL_OUT ?= runs/ablate
 SWP_OUT ?= runs/sweep
 MANIFEST?= fixtures/dsun_sweep/manifest.json
+SMOKE   ?= fixtures/dsun_sweep/dsun_50
+SMOKE_OUT?= runs/smoke
 PORT    ?= 8000
 
 # matplotlib must never look for a display, here or in the container.
@@ -84,6 +86,15 @@ dashboard: ## Serve viewer/ and runs/ on localhost:8000 (Ctrl-C to stop)
 	@$(PY) -m http.server $(PORT) --bind 127.0.0.1
 # Served, not opened as file://, because the viewer fetches run JSON and a file:// page
 # cannot. stdlib http.server, bound to loopback: nothing installed, nothing exposed.
+
+smoke: ## Is the install healthy? Registers the hardest fixture. PASS/FAIL, exit code.
+# `make demo` is NOT a health check: synth_pair_A defeats naive SIFT by design and
+# demo passes no DEM, so a correct install reports model_type=failed there. This
+# target uses the hardest sweep pair WITH the DEM and the rift matcher, which is a
+# path that must succeed, and it fails loudly with a non-zero exit when it does not.
+	@test -f $(SMOKE)/source.tif || { 	  echo "missing $(SMOKE) — run: $(PY) -m synth.sweep"; exit 1; }
+	@$(CLI) register --source $(SMOKE)/source.tif --ref $(SMOKE)/reference.tif 	  --dem $(SMOKE)/dem.tif --set match.method=rift --out $(SMOKE_OUT) >/dev/null
+	@$(PY) -c "import json,sys; m=json.load(open('$(SMOKE_OUT)/metrics.json')); n=m.get('inlier_count') or 0; e=m.get('gt_rmse_px'); ok = n >= 100 and e is not None and e < 5.0; print(('PASS' if ok else 'FAIL'), '· inliers', n, '· true err',       ('%.2f px' % e) if e is not None else 'none', '· model', m.get('model_type')); print('' if ok else 'expected >=100 inliers and <5 px on this pair'); sys.exit(0 if ok else 1)"
 
 airgap: ## Prove no external URL and no unlocked import (CI gates on this)
 	$(PY) scripts/verify_airgap.py

@@ -141,12 +141,24 @@ def dashboard(runs_root, out_path, viewers):
 
 
 @cli.command()
-@click.option("--source", required=True, type=click.Path(), help="Source (moving) image")
-@click.option("--ref", required=True, type=click.Path(), help="Reference (fixed) image")
+@click.option("--source", type=click.Path(), help="Source (moving) image")
+@click.option("--ref", type=click.Path(), help="Reference (fixed) image")
 @click.option("--dem", "dem_path", type=click.Path(), help="Optional DEM")
-def check(source, ref, dem_path):
-    """Preflight a data pair: what parsed, what will run, and the command to run next."""
+@click.option("--dir", "scan_dir", type=click.Path(exists=True),
+              help="Scan a download directory and rank every candidate pair")
+def check(source, ref, dem_path, scan_dir):
+    """Preflight a pair, or --dir to rank every pair in a download directory."""
     from samanvay.io.preflight import check_pair, format_report
+
+    if scan_dir:
+        from samanvay.io.preflight import format_scan, rank_pairs, scan_products
+        products, skipped = scan_products(scan_dir)
+        pairs = rank_pairs(products)
+        click.echo(format_scan(products, pairs, skipped))
+        raise SystemExit(0 if pairs else 1)
+
+    if not (source and ref):
+        raise click.UsageError("give --source and --ref, or --dir to scan a directory")
 
     result = check_pair(source, ref, dem_path)
     report = format_report(result)

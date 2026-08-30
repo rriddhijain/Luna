@@ -22,7 +22,9 @@ _ALIASES = {
     "sun_az_deg": ("SUN_AZ_DEG", "SUB_SOLAR_AZIMUTH", "SOLAR_AZIMUTH", "SUN_AZIMUTH",
                    "SUB_SOLAR_AZIMUTH_ANGLE"),
     "sun_el_deg": ("SUN_EL_DEG", "SOLAR_ELEVATION", "SUN_ELEVATION", "SUB_SOLAR_ELEVATION"),
-    "incidence_deg": ("INCIDENCE_DEG", "INCIDENCE_ANGLE", "SOLAR_INCIDENCE_ANGLE"),
+    # SOLAR_INCIDENCE (no _ANGLE) is what Chandrayaan-2 ISDA labels actually write.
+    "incidence_deg": ("INCIDENCE_DEG", "INCIDENCE_ANGLE", "SOLAR_INCIDENCE_ANGLE",
+                      "SOLAR_INCIDENCE"),
     "emission_deg": ("EMISSION_DEG", "EMISSION_ANGLE"),
     "phase_deg": ("PHASE_DEG", "PHASE_ANGLE"),
 }
