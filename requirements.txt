@@ -1,0 +1,20 @@
+# SAMANVAY — direct runtime dependencies (seat 5)
+#
+# Convenience file for `pip install -r requirements.txt`. Versions match the
+# tested set; for a byte-identical, fully transitive-pinned environment use
+# requirements.lock instead (that is what CI and the container install).
+#
+# The 'contrib' OpenCV build is mandatory: cv2.USAC_MAGSAC (MAGSAC++) only
+# ships there. `python -c "import cv2; print(cv2.USAC_MAGSAC)"` must not raise.
+numpy==2.2.6
+scipy==1.18.1
+scikit-image==0.26.0
+opencv-contrib-python==5.0.0.93
+matplotlib==3.11.1
+rasterio==1.5.1
+click==8.5.0
+PyYAML==6.0.3
+
+# dev / CI
+pytest==9.1.1
+ruff==0.16.5

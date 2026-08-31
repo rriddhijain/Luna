@@ -1,0 +1,30 @@
+# SAMANVAY compose (seat 5)
+#
+# Registration on a clean machine:
+#   docker compose run --rm samanvay register \
+#     --source data/source.tif --ref data/reference.tif --out runs/demo_01
+#
+# End-to-end self-test (renders a synthetic pair, registers it, benchmarks):
+#   docker compose run --rm demo
+services:
+  samanvay:
+    build: .
+    working_dir: /app
+    # Mount the checkout so outputs (runs/, bench/results/) land on the host.
+    volumes:
+      - .:/app
+    # Override on the command line, e.g. `... run --rm samanvay register ...`.
+    command: ["--help"]
+
+  demo:
+    build: .
+    working_dir: /app
+    volumes:
+      - .:/app
+    # Full path on a machine with no data: generate a pair, register, benchmark.
+    entrypoint: ["sh", "-lc"]
+    command:
+      - >-
+        python -m synth.render_pair &&
+        samanvay register --source data/source.tif --ref data/reference.tif --out runs/demo_01 &&
+        python -m bench.harness --quick

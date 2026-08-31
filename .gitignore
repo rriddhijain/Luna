@@ -1,0 +1,18 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+runs/
+data/
+.pytest_cache/
+.ruff_cache/
+
+# seat 5 build / cache / benchmark artifacts
+.samanvay_cache/
+bench/results/
+dist/
+build/
+*.egg-info/
+
+# local agent scratch (not part of the project)
+agent-tools/

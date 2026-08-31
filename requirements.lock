@@ -1,0 +1,42 @@
+# SAMANVAY — fully pinned lockfile (seat 5)
+#
+# Reproducible environment: exact versions of every direct AND transitive
+# dependency, captured from a known-green install (Python 3.12, linux x86_64).
+# This is the file CI and the container install from, so every machine runs
+# byte-identical code.
+#
+#   python -m venv .venv && . .venv/bin/activate
+#   pip install -r requirements.lock && pip install -e . --no-deps
+#
+# Regenerate after a deliberate dependency change with:
+#   pip freeze | grep -viE '^(pip|setuptools|wheel)==' > requirements.lock
+#
+affine==3.0.1
+attrs==26.1.0
+certifi==2026.7.22
+click==8.5.0
+contourpy==1.3.3
+cycler==0.12.1
+fonttools==4.63.0
+imageio==2.37.4
+iniconfig==2.3.0
+kiwisolver==1.5.1
+lazy-loader==0.5
+matplotlib==3.11.1
+networkx==3.6.1
+numpy==2.2.6
+opencv-contrib-python==5.0.0.93
+packaging==26.3
+pillow==12.3.0
+pluggy==1.6.0
+Pygments==2.21.0
+pyparsing==3.3.2
+pytest==9.1.1
+python-dateutil==2.9.0.post0
+PyYAML==6.0.3
+rasterio==1.5.1
+ruff==0.16.5
+scikit-image==0.26.0
+scipy==1.18.1
+six==1.17.0
+tifffile==2026.8.23
