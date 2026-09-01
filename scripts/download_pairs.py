@@ -1,17 +1,18 @@
-#!/usr/bin/env python3
 import os
 import sys
 import json
 import argparse
-import requests
+import urllib.request
 import subprocess
 
 def download_file(url: str, dest_path: str):
     print(f"Downloading {url} -> {dest_path}...")
-    r = requests.get(url, stream=True)
-    r.raise_for_status()
-    with open(dest_path, "wb") as f:
-        for chunk in r.iter_content(chunk_size=8192):
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req) as resp, open(dest_path, "wb") as f:
+        while True:
+            chunk = resp.read(8192)
+            if not chunk:
+                break
             f.write(chunk)
 
 def main():
@@ -32,9 +33,9 @@ def main():
         f"query=product&results=m&latitude={args.lat}&longitude={args.lon}&locr={args.radius}&output=json"
     )
     
-    response = requests.get(url)
-    response.raise_for_status()
-    data = response.json()
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req) as resp:
+        data = json.loads(resp.read().decode("utf-8"))
     
     products = data.get("ODEResults", {}).get("Products", {}).get("Product", [])
     if not isinstance(products, list):
