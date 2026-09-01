@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TRN Descent Visualizer</title>
+<style>
+  :root { --bg: #0a0c10; --card: #12161e; --border: #242a35; --cyan: #00bcd4; --text: #f5f6f9; --green: #39d353; --orange: #ffa657; --muted: #8a99ad; }
+  body { background: var(--bg); color: var(--text); font-family: 'Outfit', system-ui, sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+  h1 { font-size: 18px; margin: 0; display: flex; align-items: center; gap: 10px; }
+  .badge { background: linear-gradient(135deg, var(--cyan), #9c27b0); color: #000; font-weight: 800; padding: 4px 8px; border-radius: 4px; font-size: 11px; }
+  .layout { display: flex; flex: 1; overflow: hidden; }
+  .sidebar { width: 320px; background: var(--card); border-right: 1px solid var(--border); padding: 20px; overflow-y: auto; }
+  .canvas-container { flex: 1; display: flex; justify-content: center; align-items: center; background: #000; position: relative; overflow: hidden; }
+  canvas { border: 1px solid var(--border); max-width: 100%; max-height: 100%; object-fit: contain; }
+  .controls { margin-top: 20px; }
+  button { background: var(--cyan); border: none; color: #000; font-weight: bold; padding: 10px 15px; border-radius: 4px; cursor: pointer; width: 100%; font-size: 14px; }
+  button:hover { background: #0097a7; }
+  .stat { margin-bottom: 15px; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px; }
+  .stat-value { font-size: 16px; font-family: monospace; font-weight: bold; }
+  .log-box { font-size: 12px; font-family: monospace; background: var(--bg); border: 1px solid var(--border); padding: 10px; height: 200px; overflow-y: auto; margin-top: 20px; border-radius: 4px; color: var(--muted); }
+  .log-line { margin-bottom: 5px; }
+  .log-line.green { color: var(--green); }
+  .log-line.orange { color: var(--orange); }
+</style>
+</head>
+<body>
+  <header>
+    <h1><span class="badge">SAMANVAY</span> TRN Lander Descent</h1>
+    <div style="font-size: 13px; color: var(--muted);" id="header-info">Loading...</div>
+  </header>
+  <div class="layout">
+    <div class="sidebar">
+      <div class="stat">
+        <div class="stat-label">Altitude Scale</div>
+        <div class="stat-value" id="val-altitude">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Localisation Error</div>
+        <div class="stat-value" id="val-error" style="color: var(--orange);">—</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Inliers</div>
+        <div class="stat-value" id="val-inliers">—</div>
+      </div>
+      <div class="controls">
+        <button id="btn-replay">Replay Descent</button>
+      </div>
+      <div class="log-box" id="log-box"></div>
+    </div>
+    <div class="canvas-container">
+      <canvas id="map-canvas"></canvas>
+    </div>
+  </div>
+
+<script id="trn-data" type="application/json">null</script>
+<script>
+  const dataScript = document.getElementById('trn-data').textContent;
+  let D = null;
+  if (dataScript !== "null") {
+    D = JSON.parse(dataScript);
+  }
+
+  const canvas = document.getElementById('map-canvas');
+  const ctx = canvas.getContext('2d');
+  const logBox = document.getElementById('log-box');
+  let animationInterval = null;
+  let baseImg = new Image();
+
+  function log(msg, colorClass) {
+    const d = document.createElement('div');
+    d.className = 'log-line ' + (colorClass || '');
+    d.textContent = msg;
+    logBox.appendChild(d);
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+
+  function drawEllipse(ctx, cx, cy, rx, ry, rotationDeg, color) {
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, rx, ry, rotationDeg * Math.PI / 180, 0, 2 * Math.PI);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Fill slightly
+    ctx.fillStyle = color.replace('1)', '0.2)');
+    ctx.fill();
+  }
+
+  function drawCross(ctx, x, y, color, size=10) {
+    ctx.beginPath();
+    ctx.moveTo(x - size, y - size); ctx.lineTo(x + size, y + size);
+    ctx.moveTo(x + size, y - size); ctx.lineTo(x - size, y + size);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  
+  function drawCircle(ctx, x, y, color, size=8) {
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, 2*Math.PI);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  function renderFrame(frameIndex) {
+    if (!D || !D.frames || frameIndex >= D.frames.length) return;
+    
+    // Draw base map
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    if (baseImg.complete && baseImg.src) {
+      ctx.drawImage(baseImg, 0, 0, canvas.width, canvas.height);
+    }
+    
+    // We'll draw the trail of previous frames, then the current one
+    for (let i = 0; i <= frameIndex; i++) {
+      const fix = D.frames[i];
+      if (!fix.true_center_xy) continue;
+      const tx = fix.true_center_xy[0];
+      const ty = fix.true_center_xy[1];
+      
+      // True position
+      drawCross(ctx, tx, ty, 'rgba(57, 211, 83, ' + (i === frameIndex ? 1 : 0.4) + ')', 8);
+      
+      if (fix.estimated_center_xy) {
+        const ex = fix.estimated_center_xy[0];
+        const ey = fix.estimated_center_xy[1];
+        
+        drawCircle(ctx, ex, ey, 'rgba(255, 166, 87, ' + (i === frameIndex ? 1 : 0.5) + ')', 8);
+        
+        // Draw ellipse if available and we're on the current frame
+        if (i === frameIndex && fix.ellipse) {
+           drawEllipse(ctx, ex, ey, fix.ellipse.semi_major_px, fix.ellipse.semi_minor_px, fix.ellipse.orientation_deg, 'rgba(88, 166, 255, 1)');
+        }
+      }
+    }
+    
+    // Update Sidebar Stats
+    const curr = D.frames[frameIndex];
+    document.getElementById('val-altitude').textContent = curr.altitude_scale ? curr.altitude_scale.toFixed(2) + 'x' : '—';
+    document.getElementById('val-error').textContent = curr.error_m ? curr.error_m.toFixed(3) + ' m' : (curr.error_px ? curr.error_px.toFixed(2) + ' px' : 'Failed');
+    document.getElementById('val-inliers').textContent = curr.inlier_count !== undefined ? curr.inlier_count : '—';
+    
+    if (curr.status === "ok") {
+        log(`[Frame ${frameIndex}] Localised! Err: ${(curr.error_m||curr.error_px).toFixed(3)}`, 'green');
+    } else {
+        log(`[Frame ${frameIndex}] Failed: ${curr.reason}`, 'orange');
+    }
+  }
+
+  function playAnimation() {
+    if (!D) return;
+    clearInterval(animationInterval);
+    logBox.innerHTML = '';
+    log('Initiating Descent...', 'green');
+    
+    let frameIndex = 0;
+    renderFrame(frameIndex);
+    
+    animationInterval = setInterval(() => {
+      frameIndex++;
+      if (frameIndex >= D.frames.length) {
+        clearInterval(animationInterval);
+        log('Touchdown complete.', 'green');
+        return;
+      }
+      renderFrame(frameIndex);
+    }, 1500);
+  }
+
+  document.getElementById('btn-replay').addEventListener('click', playAnimation);
+
+  window.onload = () => {
+    if (D) {
+      document.getElementById('header-info').textContent = `${D.n_localised}/${D.n_frames} frames localised | Mean Error: ${D.mean_error_m ? D.mean_error_m.toFixed(3) + 'm' : '—'}`;
+      if (D.base_map_b64) {
+        baseImg.onload = () => {
+          canvas.width = baseImg.width;
+          canvas.height = baseImg.height;
+          playAnimation();
+        };
+        baseImg.src = D.base_map_b64;
+      } else {
+         log("No base map image provided.", "orange");
+      }
+    }
+  };
+</script>
+</body>
+</html>

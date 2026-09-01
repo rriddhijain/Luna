@@ -51,6 +51,7 @@ from samanvay.photometry.normalize import _load_dem, canonicalise
 from samanvay.photometry.shading import predicted_illumination
 from samanvay.pipeline.config import cell_budgets, load_config
 from samanvay.types import Product
+from samanvay.report.dashboard import _embed_image, VIEWER_DIR
 
 # Parameter count of each model in the verify ladder — the k in "2N - k" degrees of
 # freedom behind the covariance. Must agree with geometry/verify.py's ladder.
@@ -589,6 +590,24 @@ def run_trn_demo(reference_path, out_dir, n_frames=5, dem_path=None,
     with open(json_path, "w") as handle:
         json.dump(_json_safe(summary), handle, indent=2)
     png_path = _plot(reference, frames, out_dir, summary)
+    
+    # Generate interactive TRN visualizer
+    html_path = os.path.join(out_dir, "trn_descent.html")
+    base_image, _ = _embed_image(str(reference_path))
+    if base_image:
+        summary["base_map_b64"] = base_image["src"]
+    
+    viewer_template = VIEWER_DIR / "trn_descent.html"
+    if viewer_template.exists():
+        page = viewer_template.read_text(encoding="utf-8")
+        payload_str = json.dumps(_json_safe(summary), allow_nan=False, default=str)
+        payload_str = payload_str.replace("<", "\\u003c").replace("\u2028", "\\u2028").replace("\u2029", "\\u2029")
+        page = page.replace('<script id="trn-data" type="application/json">null</script>',
+                            '<script id="trn-data" type="application/json">' + payload_str + '</script>')
+        with open(html_path, "w") as handle:
+            handle.write(page)
+        summary["html_path"] = html_path
+
     summary["json_path"] = json_path
     summary["png_path"] = png_path
     return summary
