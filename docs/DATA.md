@@ -97,6 +97,21 @@ scale ratio all at once; when it fails you will not know which one broke.
 
 Get a NAC↔NAC result first. Then the Ch-2 pair is a comparison, not a mystery.
 
+`scripts/download_pairs.py` finds one for you — it queries the ODE REST API, takes the
+pair with the largest incidence difference **that actually overlaps**, writes sidecars
+and runs the preflight:
+
+```bash
+python scripts/download_pairs.py --lat -85.0 --lon 25.0 --radius 0.5
+```
+
+Overlap is the gate, not a filter applied afterwards. ODE's search radius does not
+confine results to the region, and incidence angle tracks latitude, so ranking by
+illumination alone picks the two most *distant* frames on the Moon — §8's most common
+mistake, automated. It writes only the angles ODE measured; sun azimuth is not in the
+product record, so it is left unknown and the run degrades to `empirical` rather than
+carrying a substituted value that would read as measured.
+
 ---
 
 ## 5. Run it
