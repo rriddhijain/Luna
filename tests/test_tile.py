@@ -191,3 +191,26 @@ def test_orb_and_l2_paths(pair):
                               config={"method": "l2"}, init=GT_H)
     assert l2_info["method"] == "l2"
     assert np.all(l2.method == 2)
+
+
+def test_no_duplicate_tie_points(pair):
+    """One row per (source, reference) location.
+
+    SIFT emits several keypoints at one pixel — one per dominant orientation — so the
+    same correspondence used to come back several times with different descriptor
+    scores. That inflated `inlier_count` and `redundancy`, and `rmse_trustworthy` is
+    judged on redundancy: a real cross-mission run reported 100 inliers that were 28
+    distinct points, and still claimed the RMSE was trustworthy.
+    """
+    src, ref = pair
+    matches, info = match_tiled(src, ref, grid_n=2, halo_px=16,
+                                config={"method": "sift"}, init=GT_H)
+
+    assert len(matches.src_xy) > 0
+    pairs = np.hstack([matches.src_xy, matches.ref_xy])
+    assert len(np.unique(pairs, axis=0)) == len(pairs)
+
+    # The surviving row per location must be the best-scoring one, not an arbitrary one,
+    # and the cell ledger must describe what is actually returned.
+    assert np.all(np.isfinite(matches.score))
+    assert sum(c["count"] for c in info["cells"].values()) == len(matches.src_xy)

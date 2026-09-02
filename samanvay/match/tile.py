@@ -269,10 +269,31 @@ def match_tiled(
     if not out_src:
         return _empty_matchset(), info
 
-    return MatchSet(
-        src_xy=np.vstack(out_src),
-        ref_xy=np.vstack(out_ref),
-        score=np.concatenate(out_score),
-        method=np.concatenate(out_method),
-        cell=np.concatenate(out_cell),
-    ), info
+    src_xy, ref_xy = np.vstack(out_src), np.vstack(out_ref)
+    score = np.concatenate(out_score)
+    method_arr, cell_arr = np.concatenate(out_method), np.concatenate(out_cell)
+
+    # One tie-point per (source, reference) LOCATION. SIFT and ORB emit several keypoints
+    # at the same pixel — one per dominant orientation — so a single correspondence comes
+    # back several times: identical coordinates, different descriptor score. Counting them
+    # as independent inliers inflates `inlier_count` and therefore `redundancy`, and
+    # `rmse_trustworthy` is judged on redundancy. Measured at 3.6x on a real cross-mission
+    # pair, where 100 reported inliers were 28 distinct points and the run still claimed
+    # rmse_trustworthy=true. Keep the best-scoring row per location.
+    order = np.argsort(score, kind="stable")[::-1]
+    _, first = np.unique(np.hstack([src_xy, ref_xy])[order], axis=0, return_index=True)
+    keep = np.sort(order[first])
+    src_xy, ref_xy = src_xy[keep], ref_xy[keep]
+    score, method_arr, cell_arr = score[keep], method_arr[keep], cell_arr[keep]
+
+    # cell["count"] was recorded before the dedup, so make info describe what is returned.
+    # Only cells the matcher actually attempted are touched: masked_invalid must survive,
+    # because a cell correctly declined is not a cell that found nothing.
+    for cell_id, cell in info["cells"].items():
+        if cell.get("status") in ("populated", "insufficient_texture"):
+            n = int(np.count_nonzero(cell_arr == cell_id))
+            cell["count"] = n
+            cell["status"] = "populated" if n else "insufficient_texture"
+
+    return MatchSet(src_xy=src_xy, ref_xy=ref_xy, score=score,
+                    method=method_arr, cell=cell_arr), info
