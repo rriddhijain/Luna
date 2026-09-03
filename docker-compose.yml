@@ -5,7 +5,7 @@
 #
 #   docker compose build            # once
 #   docker compose run --rm fixture     # -> fixtures/synth_pair_A/  (the pair to register)
-#   docker compose run --rm demo        # -> runs/demo_01/           (the six artifacts)
+#   docker compose run --rm demo        # -> runs/demo_01/           (the run artifacts)
 #   docker compose run --rm ablate      # -> runs/ablate/ablation.md (the innovation table)
 #   docker compose run --rm bench       # -> runs/sweep/bench.md     (accuracy vs delta-sun)
 #   docker compose run --rm test        # the pytest suite, inside the image
@@ -41,7 +41,11 @@ services:
     <<: *samanvay
     command: ["fixture", "--out-dir", "fixtures/synth_pair_A"]
 
-  # The headline run: source + reference in, six artifacts out.
+  # The headline run: source + reference in, the run artifacts out. On the default
+  # config this pair registers (measured 2026-09-03 outside the container: homography
+  # +tps, 64 inliers, held-out check RMSE 1.5712 px, true gt_rmse 2.9287 px) and misses
+  # the plan's 0.85 inlier ratio at 0.2936, which the CLI prints as FAIL. A non-zero exit
+  # here means it did not register at all, not that it registered badly.
   demo:
     <<: *samanvay
     command:
@@ -66,10 +70,22 @@ services:
       - runs/ablate
 
   # Accuracy against ground truth across the delta-sun-azimuth sweep.
+  #
+  # Not `python -m bench.harness --manifest ...`, for the reason the Makefile's bench
+  # target spells out: stages.py caches phase congruency under (product_id, photometry
+  # params, file size, int mtime, shape); every sweep fixture is product_id
+  # "synth_source", 1474265 bytes, and several are written inside one wall-clock second,
+  # so on a warm cache two pairs collide and the second reports the first one's numbers.
+  # `rm -rf .cache` does not fix that — the harness warms the cache as it iterates.
+  # SWEEP_CONFIG turns the cache off, which is what run_arms() already does and why
+  # bench/baselines.md section 1 is correct; run_manifest() does not apply it and the CLI
+  # exposes no way to pass it. Keep the two surfaces identical, or the container and the
+  # laptop produce different tables. See docs/limitations.md section 9.
   bench:
     <<: *samanvay
-    entrypoint: ["python", "-m", "bench.harness"]
-    command: ["--manifest", "fixtures/dsun_sweep/manifest.json", "--out", "runs/sweep"]
+    entrypoint: ["python", "-c"]
+    command:
+      - from bench.harness import run_manifest, SWEEP_CONFIG; run_manifest('fixtures/dsun_sweep/manifest.json', 'runs/sweep', SWEEP_CONFIG)
 
   test:
     <<: *samanvay

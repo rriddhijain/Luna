@@ -174,8 +174,13 @@ def test_scan_ranks_the_real_fixture_sweep():
 
     pairs = rank_pairs(products)
     assert pairs and all(not p["a"]["is_dem"] and not p["b"]["is_dem"] for p in pairs)
-    # The sweep's widest sun difference is 50 deg over identical ground.
-    assert pairs[0]["delta_sun_az_deg"] == 50.0
+    # Over identical ground, the widest sun difference ranks first. Asserted as the
+    # property rather than as a literal: the sweep used to stop at 50 deg and now runs to
+    # 180, and a test pinned to the fixture set fails on the fixture growing rather than
+    # on the ranking breaking — which is the only thing this line is here to check.
+    widest = max(p["delta_sun_az_deg"] for p in pairs)
+    assert pairs[0]["delta_sun_az_deg"] == widest
+    assert widest >= 50.0
     assert pairs[0]["overlap"] > 0.9
     assert "samanvay register" in format_scan(products, pairs, [])
 
@@ -190,3 +195,28 @@ def test_no_overlap_sorts_below_overlap_despite_a_better_sun():
     pairs = rank_pairs([a, b, far])
     assert pairs[0]["overlap"] == 1.0
     assert pairs[-1]["overlap"] == 0.0
+
+
+def test_a_multi_band_cube_is_a_warning_that_names_the_reduction(tmp_path):
+    """A 250-band IIRS cube certified "ready" with a note reads as "nothing to know here".
+
+    What the pipeline matches is a derived map, not any band in the file, and which map it
+    is changes the answer — that is a degraded mode and it is what a warning is for.
+    """
+    cube = np.stack([_texture(seed=s) for s in range(4)])
+    path = str(tmp_path / "cube.tif")
+    with rasterio.open(path, "w", driver="GTiff", height=cube.shape[1],
+                       width=cube.shape[2], count=cube.shape[0], dtype="float32",
+                       crs="EPSG:32601", transform=from_origin(0, 0, 1, 1)) as dst:
+        dst.write(cube)
+    other = _write(tmp_path / "b.tif", _texture(seed=9))
+
+    r = check_pair(path, other)
+    band_issues = [i for i in r["source"]["issues"] if "bands" in i["message"]]
+    assert len(band_issues) == 1
+    assert band_issues[0]["level"] == "warning"
+    assert "band.reduce" in band_issues[0]["message"]
+    assert band_issues[0]["fix"]
+    assert r["verdict"] == "ready_degraded"           # not "ready"
+    # preflight must not spend a PCA pass over the cube just to say it will happen.
+    assert "band.reduce" in format_report(r)

@@ -14,6 +14,11 @@ import numpy as np
 # and division by it can never blow up. Shadowed pixels are set to exactly 0.
 _ILLUM_FLOOR = 1e-3
 
+# Above this emission angle, "phase ~= incidence" stops being defensible and
+# phase_angle_deg refuses instead of guessing. TMC-2 and LROC NAC nadir products sit
+# near 1-2 deg; an off-nadir slew does not, and that is exactly when the shortcut breaks.
+_NADIR_EMISSION_DEG = 5.0
+
 
 def _slopes(dem, gsd_m):
     """Central-difference dz/dy, dz/dx in metres-per-metre, degenerate axes give zero slope."""
@@ -141,6 +146,86 @@ def lommel_seeliger(cos_i, cos_e, lambert_weight=0.0):
     return np.clip(ls, 0.0, 1.0).astype(np.float32)
 
 
+def lunar_lambert_L(phase_deg):
+    """McEwen (1991) empirical limb-darkening L(g), as ISIS3 `LunarLambertMcEwen` hardcodes it.
+
+    L = 1 at g = 0 (pure Lommel-Seeliger) and falls toward 0 (Lambert) as phase opens up.
+    Three fitted coefficients, on g^1..g^3; the constant term is pinned at exactly 1.0 by the
+    physical constraint L(0) = 1 rather than fitted. There is nothing here to calibrate, which
+    is the whole reason to prefer this over a hand-tuned `lambert_weight`.
+
+    EXTRAPOLATION BOUND, stated because the clip below would otherwise hide it: the cubic
+    crosses zero at g = 103.7 deg and is negative beyond, so past that point this returns a
+    clamped 0.0 (pure Lambert) rather than the polynomial. That is the right direction --
+    limb darkening does keep weakening with phase -- but it is a clamp, not the fit, and
+    nothing downstream currently reports which of the two you got. ISIS does not clamp; it
+    would hand back a negative weight. Orbital pairs sit well inside the range (both frames
+    of the shipped Delta-115 pair are under g = 31 deg); a terminator-grazing frame would
+    not, and that is the case to surface a flag for if one ever ships.
+    """
+    g = float(phase_deg)
+    if not np.isfinite(g):
+        raise ValueError("phase_deg must be finite")
+    return float(np.clip(1.0 - 0.019 * g + 2.42e-4 * g ** 2 - 1.46e-6 * g ** 3, 0.0, 1.0))
+
+
+def lunar_lambert(cos_i, cos_e, L):
+    """Lunar-Lambert disk function 2L*mu0/(mu0+mu) + (1-L)*mu0.
+
+    The factor 2 is load-bearing and is what distinguishes this from `lommel_seeliger`'s
+    plain blend: it normalises the Lommel-Seeliger term so both terms reach 1 at mu0=mu=1,
+    which is what makes L a limb-darkening weight rather than an arbitrary mixing knob.
+
+    ISIS returns R30/r, normalising to a 30deg reference geometry. R30 is one constant per
+    image, so it is a global scale on the illumination field and cancels in
+    `albedo = image / illumination`. It is deliberately not implemented: registration never
+    sees it, and carrying it would imply a radiometric claim this project does not make.
+    """
+    cos_i = np.clip(np.asarray(cos_i, dtype=np.float32), 0.0, 1.0)
+    cos_e = np.clip(np.asarray(cos_e, dtype=np.float32), 0.0, 1.0)
+    denom = cos_i + cos_e
+    ls = np.divide(cos_i, denom, out=np.zeros_like(cos_i), where=denom > 1e-6)
+    L = float(np.clip(L, 0.0, 1.0))
+    return np.clip(2.0 * L * ls + (1.0 - L) * cos_i, 0.0, 1.0).astype(np.float32)
+
+
+def phase_angle_deg(meta):
+    """Phase angle in degrees plus the provenance of it; (None, reason) when unknowable.
+
+    Preference order, because a stated angle always beats a derived one:
+      "label"    meta["phase_deg"], as the product label gave it.
+      "derived_from_incidence"  cos g = cos i cos e + sin i sin e cos(delta_az), and for a
+                 near-nadir orbiter (e of a degree or two) that collapses to g ~= i with an
+                 error bounded by e itself. We do not have the spacecraft azimuth needed for
+                 the exact form, so this rung is only offered while emission is small; the
+                 bound is returned so the caller can report it rather than assume it.
+    Returns (phase_deg, info). None means unknown -- never a plausible default.
+    """
+    meta = meta or {}
+    stated = meta.get("phase_deg")
+    try:
+        if stated is not None and np.isfinite(float(stated)):
+            return float(stated), {"source": "label", "max_error_deg": 0.0}
+    except (TypeError, ValueError):
+        pass
+
+    inc, em = meta.get("incidence_deg"), meta.get("emission_deg")
+    try:
+        inc = float(inc)
+        em = 0.0 if em is None else float(em)
+    except (TypeError, ValueError):
+        return None, {"source": "unknown",
+                      "reason": "no phase_deg and no incidence_deg; cannot derive"}
+    if not np.isfinite(inc) or not np.isfinite(em):
+        return None, {"source": "unknown", "reason": "incidence/emission not finite"}
+    if abs(em) > _NADIR_EMISSION_DEG:
+        return None, {"source": "unknown", "max_error_deg": abs(em),
+                      "reason": (f"emission {em:.1f} deg exceeds the near-nadir bound "
+                                 f"{_NADIR_EMISSION_DEG} deg; g ~= i is not defensible and "
+                                 "the spacecraft azimuth needed for the exact form is absent")}
+    return inc, {"source": "derived_from_incidence", "max_error_deg": abs(em)}
+
+
 def predicted_illumination(dem, gsd_m, meta, model="lommel_seeliger", lambert_weight=0.0,
                            max_steps=None):
     """Predicted illumination field in (0,1], exactly 0 where cast-shadowed.
@@ -170,10 +255,23 @@ def predicted_illumination(dem, gsd_m, meta, model="lommel_seeliger", lambert_we
     if model == "none":
         r = np.ones_like(cos_i)
     elif model == "lambert" or not have_emission:
+        # No viewing geometry means no disk function worth the name. Lambert needs only the
+        # sun, so it is the honest floor rather than an invented emission angle. This is the
+        # branch every Chandrayaan-2 TMC product currently takes: the labels carry no
+        # EMISSION_ANGLE, so "lunar_lambert" degrades to Lambert here and says so via mode.
         r = cos_i
     else:
         cos_e = np.float32(np.cos(np.deg2rad(float(emission))))
-        r = lommel_seeliger(cos_i, cos_e, lambert_weight)
+        if model == "lunar_lambert":
+            phase, _ = phase_angle_deg(meta)
+            if phase is None:
+                # Refuse rather than substitute a plausible phase: L(g) swings from 1.0 to
+                # 0.19 across g = 0..90 deg, so a guessed g is a guessed disk function.
+                r = cos_i
+            else:
+                r = lunar_lambert(cos_i, cos_e, lunar_lambert_L(phase))
+        else:
+            r = lommel_seeliger(cos_i, cos_e, lambert_weight)
 
     r = np.clip(r, _ILLUM_FLOOR, 1.0)
     # Self-shadow (facet turned away from the sun) is geometry, not a photometric model

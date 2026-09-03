@@ -1,0 +1,183 @@
+{
+    "rmse_px": 0.11343989893039551,
+    "inlier_count": 800,
+    "inlier_ratio": 1.0,
+    "coverage_pct": 100.0,
+    "dispersion_cv": 0.0,
+    "grid_n": 4,
+    "runtime_s": 69.289,
+    "match_count": 800,
+    "mean_sigma_px": 0.039491762903950664,
+    "sigma_known_count": 700,
+    "refined_count": 788,
+    "model_type": "affine",
+    "model_margin": 0.1,
+    "cell_counts": [
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50,
+        50
+    ],
+    "cell_states": [
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated"
+    ],
+    "gt_rmse_px": null,
+    "gt_bias_x": null,
+    "gt_bias_y": null,
+    "gt_p90_px": null,
+    "stage_s": {
+        "load": 0.468,
+        "coarse_init": 0.001,
+        "canonicalise": 38.192,
+        "match": 29.996,
+        "verify": 0.002,
+        "refine": 0.63,
+        "metrics": 0.01,
+        "warp": 0.008
+    },
+    "subpixel_applied": true,
+    "init_method": "geotransform",
+    "init_crs_match": true,
+    "illum_mode": "dem_lowfreq",
+    "pc_status": "computed",
+    "illum_scale": "auto",
+    "illum_scale_reason": "illum_scale=auto, pose untrusted",
+    "dem_transform": "metadata_geotransform",
+    "dem_align": "geotransform",
+    "dem_coverage_frac": 1.0,
+    "pose_uncertainty_px": "unknown",
+    "pose_trusted_reason": "pose uncertainty unknown; a stated geotransform is not evidence",
+    "dem_transform_fallback": null,
+    "canonicalised": true,
+    "model_candidates": {
+        "similarity": {
+            "rmse_px": 0.14344312121715957,
+            "rmse_common_px": 0.14344312121715957,
+            "inlier_count": 800,
+            "redundancy": 798
+        },
+        "affine": {
+            "rmse_px": 0.11343989893039551,
+            "rmse_common_px": 0.11343989893039551,
+            "inlier_count": 800,
+            "redundancy": 797
+        },
+        "homography": {
+            "rmse_px": 0.11341736098216251,
+            "rmse_common_px": 0.11341736098216251,
+            "inlier_count": 800,
+            "redundancy": 796
+        }
+    },
+    "redundancy": 797,
+    "rmse_trustworthy": true,
+    "rmse_warning": null,
+    "models_rejected": null,
+    "verify_status": "ok",
+    "cell_info": null,
+    "refine_method": "phase_cross_correlation",
+    "cascade": {
+        "level_rule": "K = 1 + ceil(log(r)/log(4)), capped so the coarsest level keeps both images >= 192 px and at 6 levels; the finer image is decimated to meet the coarser at every level",
+        "scale_src_to_ref": 1.0,
+        "scale_ratio": 1.0,
+        "scale_source": "init",
+        "levels": 1,
+        "levels_source": "scale_ratio",
+        "source_base_decimation": 1.0,
+        "reference_base_decimation": 1.0,
+        "level_info": [
+            {
+                "level": 0,
+                "src_decimation": 1.0,
+                "ref_decimation": 1.0,
+                "src_shape": [
+                    9296,
+                    872
+                ],
+                "ref_shape": [
+                    9296,
+                    872
+                ],
+                "search_margin_px": null,
+                "seeded": true,
+                "match_count": 800,
+                "inlier_count": 800,
+                "rmse_px": 0.2519896626613855,
+                "rmse_trustworthy": true,
+                "model": "similarity",
+                "status": "ok",
+                "reason": "",
+                "transform": [
+                    [
+                        1.000002167999459,
+                        1.634510620340178e-05,
+                        -0.38266113440454064
+                    ],
+                    [
+                        -1.634510620340178e-05,
+                        1.000002167999459,
+                        -0.005724931052055162
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "scale_drift": 1.00000216813304
+            }
+        ],
+        "skipped_levels": [],
+        "status": "ok",
+        "stop_reason": "",
+        "final_level": 0,
+        "source_decimation": 1.0,
+        "transform": [
+            [
+                1.000002167999459,
+                1.634510620340178e-05,
+                -0.38266113440454064
+            ],
+            [
+                -1.634510620340178e-05,
+                1.000002167999459,
+                -0.005724931052055162
+            ],
+            [
+                0.0,
+                0.0,
+                1.0
+            ]
+        ],
+        "match_count": 800,
+        "inlier_count": 800
+    },
+    "gt_source": null
+}

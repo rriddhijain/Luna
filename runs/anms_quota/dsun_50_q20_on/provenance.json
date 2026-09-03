@@ -1,0 +1,122 @@
+{
+    "timestamp_utc": "2026-09-02T18:51:14.095713+00:00",
+    "git_sha": "bbd5ceaf937f5795e3050ee4967e874714b87a84",
+    "git_branch": "foundation-and-evidence",
+    "git_dirty": true,
+    "seed": null,
+    "config": {
+        "seed": null,
+        "grid_n": 4,
+        "grid_aspect": true,
+        "halo_px": 64,
+        "nodata": null,
+        "warp_interp": "cubic",
+        "output": {
+            "grid": "both"
+        },
+        "cache": {
+            "enabled": false,
+            "dir": ".cache/samanvay"
+        },
+        "photometry": {
+            "canonicalise": true,
+            "phase_congruency": true,
+            "photometric_model": "lommel_seeliger",
+            "dem_path": null,
+            "mask_fill": "reflect",
+            "clahe": false,
+            "clahe_clip": 2.0,
+            "clahe_grid": 8
+        },
+        "match": {
+            "method": "rift",
+            "anms": true,
+            "coarse_init": true,
+            "cascade_enabled": true,
+            "uniformity": true,
+            "min_matches": 5,
+            "max_matches": 20,
+            "cascade": {}
+        },
+        "geometry": {
+            "model": "auto",
+            "model_margin": 0.1,
+            "subpixel": true,
+            "check_fraction": 0.2,
+            "tps": "auto",
+            "tps_lambda": 0.5,
+            "tps_min_control": 25,
+            "grid_n": 4,
+            "grid_aspect": true
+        },
+        "band": {
+            "index": null,
+            "reduce": "pc1",
+            "min_snr": 2.0,
+            "max_bands": 64
+        },
+        "refine": {
+            "method": "phase"
+        },
+        "report": {
+            "pdf": true
+        },
+        "seed_applied": false,
+        "seed_applied_to": null,
+        "seed_reason": "no seed given: nobody seeded"
+    },
+    "package_versions": {
+        "numpy": "2.2.6",
+        "scipy": "1.17.1",
+        "rasterio": "1.4.4",
+        "scikit-image": "0.26.0",
+        "matplotlib": "3.11.1",
+        "click": "8.5.0",
+        "pyyaml": "6.0.3",
+        "pytest": "9.1.1",
+        "opencv-python-headless": "5.0.0.93",
+        "samanvay": "0.1.0"
+    },
+    "inputs": {
+        "source": {
+            "path": "/Users/shivansh-srivastava/Personal/Code/Samanvay/fixtures/dsun_sweep/dsun_50/source.tif",
+            "size_bytes": 1474265,
+            "product_id": "synth_source",
+            "meta_source": {
+                "product_id": "sidecar",
+                "instrument": "sidecar",
+                "gsd_m": "sidecar",
+                "sun_az_deg": "sidecar",
+                "sun_el_deg": "sidecar",
+                "incidence_deg": "sidecar",
+                "emission_deg": "sidecar",
+                "phase_deg": "unknown",
+                "geotransform": "sidecar",
+                "crs": "sidecar",
+                "shape": "geotiff",
+                "dtype": "geotiff",
+                "nodata": "unknown"
+            }
+        },
+        "reference": {
+            "path": "/Users/shivansh-srivastava/Personal/Code/Samanvay/fixtures/dsun_sweep/dsun_50/reference.tif",
+            "size_bytes": 525275,
+            "product_id": "synth_reference",
+            "meta_source": {
+                "product_id": "sidecar",
+                "instrument": "sidecar",
+                "gsd_m": "sidecar",
+                "sun_az_deg": "sidecar",
+                "sun_el_deg": "sidecar",
+                "incidence_deg": "sidecar",
+                "emission_deg": "sidecar",
+                "phase_deg": "unknown",
+                "geotransform": "sidecar",
+                "crs": "sidecar",
+                "shape": "geotiff",
+                "dtype": "geotiff",
+                "nodata": "unknown"
+            }
+        }
+    }
+}

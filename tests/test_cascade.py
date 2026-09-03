@@ -5,7 +5,9 @@ import pytest
 from samanvay.types import CanonicalImage, MatchSet, Registration
 from samanvay.geometry.init import apply_transform
 from samanvay.match import cascade
+from samanvay.match import tile
 from samanvay.match.cascade import match_cascade, chain_registrations, plan_levels
+from samanvay.photometry.phasecong import phase_congruency
 
 
 # ----------------------------------------------------------------- synthetic pairs --
@@ -165,17 +167,39 @@ def test_a_failing_level_stops_the_descent_instead_of_propagating_garbage(pair_2
     assert not np.allclose(info["transform"], good_info["transform"])
 
 
-def test_too_few_inliers_to_seed_stops_the_descent(pair_2x):
+def test_an_unmeetable_seeding_bar_skips_every_seed_but_still_delivers(pair_2x):
+    """The bar stops a weak fit SEEDING a finer level; it must not eat the result.
+
+    This test used to assert the opposite — that an unmeetable bar returns zero matches.
+    That contradicted the module's own guarantee that "the cascade is never worse than
+    not cascading", and on an 80x OHRC-class pair, where the size cap forces K = 1 and
+    the only level IS the finest, it made the cascade return 0 matches where the same
+    pair with the cascade disabled fitted a similarity at gt_rmse_px 0.543.
+    """
     src, ref, _ = pair_2x
     init = np.array([[0.5, 0, 0], [0, 0.5, 0], [0, 0, 1.0]])
     cfg = {"method": "sift", "grid_n": 3, "halo_px": 32,
            "cascade": {"min_seed_inliers": 10 ** 6}}       # nothing can clear this bar
     matches, info = match_cascade(src, ref, config=cfg, init=init)
-    assert info["status"] == "failed"
-    assert info["transform"] is None
-    assert len(matches.src_xy) == 0                        # honest empty, not a guessed fit
-    assert "below the seeding bar" in info["stop_reason"]
-    assert all(l["status"] == "skipped" for l in info["level_info"])
+
+    # Every level that had a finer level below it refused to seed it.
+    seeding = [l for l in info["level_info"] if int(l["level"]) > 0]
+    assert seeding, "fixture must have more than one level for this to mean anything"
+    assert all(l["status"] == "skipped" for l in seeding)
+    assert "below the seeding bar" in " ".join(
+        str(l.get("reason") or "") for l in seeding)
+
+    # The finest level had nothing to seed, so it delivered instead of being discarded.
+    finest = [l for l in info["level_info"] if int(l["level"]) == 0]
+    assert finest and finest[0]["status"] == "ok"
+    assert len(matches.src_xy) > 0
+    assert info["transform"] is not None
+
+    # The guarantee, stated as an assertion: no worse than not cascading.
+    direct, _ = match_cascade(src, ref, init=init,
+                              config={"method": "sift", "grid_n": 3, "halo_px": 32,
+                                      "cascade": {"max_levels": 1}})
+    assert len(matches.src_xy) >= len(direct.src_xy) or len(direct.src_xy) == 0
 
 
 def test_a_wildly_wrong_scale_is_refused_rather_than_seeded(pair_2x):
@@ -354,3 +378,162 @@ def test_chain_degenerate_inputs_never_crash():
     # ...and with nothing to fall back to, it stays unknown.
     _, cov, info = chain_registrations([np.eye(3)], sigmas=[float("nan")])
     assert cov is None and info["cov_missing_hops"] == [0]
+
+
+# ------------------------------------------------------- what the level hands back --
+
+def _budgets(n_cells, max_matches, min_matches=3):
+    return {i: {"min_matches": min_matches, "max_matches": max_matches}
+            for i in range(n_cells)}
+
+
+def test_cell_info_is_the_level_that_produced_the_returned_matches(pair_4x):
+    src, ref, _ = pair_4x
+    init = np.array([[0.25, 0, 0], [0, 0.25, 0], [0, 0, 1.0]])
+    matches, info = match_cascade(src, ref, config={"method": "sift", "grid_n": 3,
+                                                    "halo_px": 32}, init=init)
+    assert info["status"] == "ok"
+    cells = info["cell_info"]
+    assert cells is not None                        # null on every default run before this
+    # Levels replace rather than merge, so the authoritative cell state is the finest
+    # successful level's — the one whose ids `matches.cell` carries.
+    assert info["cell_info_level"] == info["final_level"]
+    assert cells["level"] == info["final_level"]
+    assert cells["src_decimation"] == pytest.approx(info["source_decimation"])
+    assert set(np.unique(matches.cell)) <= set(cells["cells"])
+    # Per-cell counts describe the returned set, not some earlier level's.
+    for cid, cell in cells["cells"].items():
+        assert cell["count"] == int(np.count_nonzero(matches.cell == cid))
+    assert sum(c["count"] for c in cells["cells"].values()) == len(matches.src_xy)
+    assert any(c["status"] == "populated" for c in cells["cells"].values())
+    # The boxes are in the level's own pixels, and it says so rather than leaving a
+    # reader to assume full resolution.
+    assert "level pixels" in cells["coords_frame"]
+    core = cells["cells"][0]["src_core"]
+    # Anchor on the FINAL level, not on level_info[-1]: the last entry is the last level
+    # ATTEMPTED, which on a stopped descent is the rejected one and a strictly larger
+    # frame — an assertion against it passes even when cell_info came from the wrong
+    # level. test_cell_info_follows_a_stopped_descent covers that case.
+    lvl0 = [l for l in info["level_info"] if l["level"] == info["cell_info_level"]][0]
+    assert core[2] <= lvl0["src_shape"][1]
+    # The frame is published as the level's SHAPE, not as the nominal decimation:
+    # _level_shape rounds, so src_decimation is not always the achieved factor and a
+    # reader scaling src_core by it lands off the edge (858/4.0 -> 214, factor 4.0093
+    # on fixtures/dsun_sweep/dsun_50 level 1).
+    final = [l for l in info["level_info"] if l["level"] == info["cell_info_level"]][0]
+    assert tuple(cells["src_shape"]) == tuple(final["src_shape"])
+    assert tuple(cells["ref_shape"]) == tuple(final["ref_shape"])
+
+
+def test_cell_info_stays_null_when_no_level_succeeded(pair_2x):
+    src, ref, _ = pair_2x
+    init = np.array([[0.5, 0, 0], [0, 0.5, 0], [0, 0, 1.0]])
+    cfg = {"method": "sift", "grid_n": 3, "halo_px": 32,
+           "cascade": {"min_seed_inliers": 10 ** 6}}
+    matches, info = match_cascade(src, ref, config=cfg, init=init)
+    # The finest level is exempt from the seeding bar (nothing below it to seed), so it
+    # succeeds and its cells are the ones that describe the returned points.
+    assert info["status"] == "ok" and len(matches.src_xy) > 0
+    assert info["cell_info"] is not None
+    assert int(info["cell_info_level"]) == 0
+
+
+@pytest.mark.parametrize("anms", [True, False])
+def test_the_anms_gate_reaches_the_cells_of_the_final_level(pair_4x, anms):
+    src, ref, _ = pair_4x
+    init = np.array([[0.25, 0, 0], [0, 0.25, 0], [0, 0, 1.0]])
+    # A quota of 4 per cell bites on this pair, so the selection rule actually runs.
+    cfg = {"method": "sift", "grid_n": 3, "halo_px": 32, "anms": anms,
+           "cell_budgets": _budgets(9, max_matches=4)}
+    matches, info = match_cascade(src, ref, config=cfg, init=init)
+    cells = info["cell_info"]
+    assert cells is not None and cells["anms"] is anms
+    bit = [c["anms"] for c in cells["cells"].values() if c["anms"] is not None]
+    assert bit and set(bit) == {anms}
+    assert all(c["count"] <= 4 for c in cells["cells"].values())
+
+
+# ------------------------------------------------ the method actually used per level --
+
+def _canon_pc(albedo):
+    """A CanonicalImage with a real phase-congruency map — what the rift arm needs."""
+    out = phase_congruency(albedo, nscale=4, norient=6)
+    return CanonicalImage(albedo=albedo,
+                          pc=np.asarray(out["pc"], np.float32),
+                          pc_orient=np.asarray(out["orientation"], np.float32),
+                          mask=np.zeros(albedo.shape, np.uint8),
+                          params={"nscale": 4, "norient": 6})
+
+
+def test_the_configured_method_reaches_the_detector_at_every_level(monkeypatch):
+    src_a = _texture(512, seed=7)
+    H_gt = np.array([[0.5, 0, 4.0], [0, 0.5, -3.0], [0, 0, 1.0]])
+    ref_a = cv2.warpPerspective(src_a, H_gt, (256, 256), flags=cv2.INTER_AREA)
+    src, ref = _canon_pc(src_a), _canon_pc(ref_a)
+
+    seen = []
+    real_detect = tile.detect_keypoints
+
+    def spy(img, method="sift", pc_map=None, **kw):
+        seen.append((str(method), pc_map is not None and bool(np.any(pc_map))))
+        return real_detect(img, method=method, pc_map=pc_map, **kw)
+
+    monkeypatch.setattr(tile, "detect_keypoints", spy)
+    init = np.array([[0.5, 0, 0], [0, 0.5, 0], [0, 0, 1.0]])
+    _, info = match_cascade(src, ref, init=init,
+                            config={"method": "rift", "grid_n": 2, "halo_px": 16,
+                                    "cascade": {"min_level_side": 96}})
+
+    assert info["levels"] == 2                       # a one-level run proves nothing here
+    assert len(info["level_info"]) == 2
+    # No level re-reads a stale "auto" or drops to the intensity arm: the cascade passes
+    # the resolved method straight through, and every level detected on the PC map.
+    assert {m for m, _ in seen} == {"rift"}
+    assert all(has_pc for _, has_pc in seen)
+    assert [l["method"] for l in info["level_info"]] == ["rift", "rift"]
+    assert len(seen) >= 2 * 2 * (2 * 2)              # 2 levels x 2 images x 4 cells
+
+
+def test_cell_info_follows_a_stopped_descent(pair_4x):
+    """The finest level FAILS after a coarser one worked: cell_info must be the coarser one.
+
+    This is the only case where "which level's cell_info" can actually be answered wrong.
+    On a clean run the finest successful level is level 0 and every candidate coincides,
+    so a run that finishes proves nothing; here level 0 is rejected, the returned matches
+    come from level 1, and cell_info has to follow the matches rather than the last level
+    attempted. Level 0 is sabotaged rather than found in the wild because a stop needs a
+    level that fits at 8x decimation and then collapses at 4x, which no synthetic pair
+    reliably does.
+    """
+    src, ref, _ = pair_4x
+    init = np.array([[0.25, 0, 0], [0, 0.25, 0], [0, 0, 1.0]])
+    cfg = {"method": "sift", "grid_n": 3, "halo_px": 32}
+    real = cascade.match_tiled
+
+    def sabotage_finest(src_l, ref_l, **kw):
+        m, ci = real(src_l, ref_l, **kw)
+        # levels=2 puts the source at 128 px on level 1 and 256 px on level 0.
+        return (tile._empty_matchset(), ci) if src_l.albedo.shape[0] >= 256 else (m, ci)
+
+    try:
+        cascade.match_tiled = sabotage_finest
+        matches, info = match_cascade(src, ref, config=cfg, init=init, levels=2)
+    finally:
+        cascade.match_tiled = real
+
+    assert info["status"] == "stopped"
+    assert info["final_level"] == 1                    # level 0 rejected, level 1 kept
+    assert info["level_info"][-1]["level"] == 0        # the last ATTEMPTED level is not it
+    cells = info["cell_info"]
+    assert cells is not None
+    assert info["cell_info_level"] == 1 and cells["level"] == 1
+    # The frame is the surviving level's, not the rejected one's.
+    lvl = [l for l in info["level_info"] if l["level"] == 1][0]
+    assert tuple(cells["src_shape"]) == tuple(lvl["src_shape"])
+    assert tuple(cells["ref_shape"]) == tuple(lvl["ref_shape"])
+    assert cells["src_decimation"] == pytest.approx(info["source_decimation"])
+    # ...and the counts describe the points that were actually returned.
+    for cid, cell in cells["cells"].items():
+        assert cell["count"] == int(np.count_nonzero(matches.cell == cid))
+    assert sum(c["count"] for c in cells["cells"].values()) == len(matches.src_xy) > 0
+    assert max(c["src_core"][2] for c in cells["cells"].values()) <= lvl["src_shape"][1]

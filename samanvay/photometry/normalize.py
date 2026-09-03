@@ -44,6 +44,39 @@ pose is wrong by -- while phase congruency, which needs no DEM and no pose at al
 the fine structure.  That is exactly the position docs/decisions.md D2 already takes; this
 module now takes it by default instead of only when the DEM is coarse.
 
+THE MASK-BOUNDARY LANDMINE.  The returned `albedo` is zero outside the validity mask,
+which is right for a map that is consumed as radiometry.  Feeding that same array to
+phase congruency was not: every mask boundary became a hard step edge, positioned by the
+sun that cast the shadow, inside the map whose entire purpose is illumination invariance.
+`photometry.mask_fill` (default "reflect") now fills the invalid pixels from their valid
+neighbourhood for the PC input only; "zero" restores the old array exactly, so the
+difference stays measurable in the ablation.  `_fill_invalid` carries the numbers.
+
+What it is worth, measured, and the honest answer is "depends on the mask".  The fill
+erases the manufactured edge completely where the invalid region is CONTIGUOUS -- one
+cast shadow, 29.9% invalid: boundary PC 35.5x the interior with "zero", 1.07x with
+"reflect".  That scene is tests/test_photometry.py::masked_scene at n=512, so the number
+is rerunnable from this repo rather than quoted from a scratch harness.  On
+fixtures/dsun_sweep, whose masks are 1.1% scattered single-pixel dark speckle rather than
+regions, there is almost no manufactured edge to remove and the fit does not improve;
+registering the 0-50 deg sweep both ways with match.method=rift:
+
+    dsun   gt_rmse_px zero/reflect   inliers zero/reflect
+      0      0.384 / 0.369             336 / 287
+     10      0.288 / 0.431             313 / 276
+     20      0.295 / 0.825             263 / 224
+     30      0.950 / 1.004             199 / 181
+     40      1.657 / 1.125             148 / 142
+     50      1.980 / 1.887             111 /  99
+
+Mean gt_rmse 0.926 -> 0.940 px: a wash, with 10-15% fewer inliers because the zeroed
+speckle was itself a repeatable feature in a synthetic pair rendered from ONE DEM.  That
+repeatability does not survive to a real pair, which is why the default stays "reflect";
+but nobody should quote this sweep as evidence the fill improves accuracy, because it
+does not.  The evidence for the fill is the 35.5x -> 1.07x line above.
+
+`photometry.clahe` is off on this arm on purpose -- see the comment at the call site.
+
 `canonicalise_with_transform(product, params, H_to_dem)` renders the illumination through
 a CORRECTED image-pixel -> DEM-pixel mapping instead of the product's own geotransform,
 which is what makes a two-pass loop possible: register once, recover the true transform,
@@ -63,8 +96,12 @@ from samanvay.photometry.mask import build_mask, MASK_VALID
 
 _DEFAULTS = {
     "dem_path": None,
-    "photometric_model": "lommel_seeliger",   # "lommel_seeliger" | "lambert" | "none"
-    "phase_congruency": True,
+    "photometric_model": "lommel_seeliger",   # "lommel_seeliger" | "lunar_lambert" | "lambert" | "none"
+    "phase_congruency": True,                 # True | False | "auto" (see _resolve_flag)
+    "mask_fill": "reflect",                   # how invalid pixels enter the PC transform
+    "clahe": False,                           # True | False | "auto"
+    "clahe_clip": 2.0,
+    "clahe_grid": 8,
     "epsilon": 1e-3,
     "smooth_sigma": None,                     # None -> derived from image size / DEM ratio
     "nscale": 4,
@@ -79,6 +116,7 @@ _DEFAULTS = {
 }
 
 _ILLUM_SCALES = ("auto", "full", "lowfreq")
+_MASK_FILLS = ("reflect", "zero")
 # A DEM that lands on the image grid by construction has no pose to be wrong about.
 _TRUSTED_ALIGNMENTS = ("same_grid", "same_shape_no_geotransform", "corrected_transform")
 
@@ -379,6 +417,68 @@ def _illumination(img, meta, p, H_to_dem=None):
     return _empirical_illumination(img, sigma), None, "empirical", info
 
 
+def _resolve_flag(value, auto):
+    """Resolve a tri-state config flag to a bool. "auto" -> `auto`.
+
+    `photometry.phase_congruency` and `photometry.clahe` are "auto" in the shipped config
+    and pipeline/stages resolves both from the matcher it picked before calling here --
+    it is the only layer that knows which matcher won. A direct caller (the ablation, a
+    test, trn.py) has no matcher, so "auto" falls back to the value that is right without
+    one: compute PC (the RIFT path is the default arm), and leave CLAHE off.
+    """
+    if isinstance(value, str):
+        v = value.strip().lower()
+        if v == "auto":
+            return bool(auto)
+        return v in ("1", "true", "yes", "on")
+    return bool(value)
+
+
+def _fill_invalid(albedo, valid):
+    """Fill invalid pixels from their valid neighbourhood. Returns (filled, n_filled).
+
+    Zeroing them instead -- what this module did until now, and what mask_fill="zero"
+    still does -- manufactures a hard step edge along every mask boundary, positioned by
+    the sun, inside the one map whose entire purpose is illumination invariance.
+
+    Measured here, mean PC in the 1-px band on the VALID side of the boundary divided by
+    the mean over the interior (>10 px from any invalid pixel):
+
+        one contiguous cast shadow, 29.9% invalid  zero 35.5x   reflect 1.07x
+        fixtures/dsun_sweep, 1.1% invalid         zero 10.8x   reflect  9.7x
+
+    The first is the real-NAC geometry and the whole 34.4x excess is manufactured: the
+    fill removes it. The second is the synthetic sweep, whose invalid pixels are scattered
+    single-pixel dark speckle rather than a region -- most of that 10.8x is genuine
+    texture, and the fill can only take the 1.1x that is not. See the sweep note at the
+    top of this module for what that does to the fit.
+
+    Telea fast-marching inpainting over the invalid region. The uint8 view is deliberate:
+    OpenCV 5.0.0's float32 inpaint path returns values outside the input range (measured
+    -1.106 to 1.986 from a smooth [0,1] input), which would inject exactly the structure
+    this exists to remove. Only the invalid pixels take the quantised value; every valid
+    pixel keeps its exact float, so the residual step across the boundary is at most
+    1/255 instead of the full albedo. Cost measured at 0.98 s on 3000x3000 with 40%
+    invalid, against the ~11.5 s of the phase congruency it feeds.
+    """
+    invalid = ~valid
+    n = int(np.count_nonzero(invalid))
+    if n == 0:
+        return albedo, 0                       # nothing to fill: 0 is the measured answer
+    if n == invalid.size:
+        # Every pixel is invalid, so there is no neighbourhood to fill FROM. Reporting 0
+        # here would read exactly like the line above -- "the fill ran and found nothing
+        # to do" -- on a frame where the fill was asked for, had `n` pixels of work, and
+        # could not run. That is the plausible-default lie the repo's null rule exists to
+        # stop, so mask_fill_px is null and the caller can tell the two apart.
+        return albedo, None
+    u8 = np.clip(albedo * 255.0 + 0.5, 0.0, 255.0).astype(np.uint8)
+    filled = cv2.inpaint(u8, invalid.astype(np.uint8), 3, cv2.INPAINT_TELEA)
+    out = albedo.copy()
+    out[invalid] = filled[invalid].astype(np.float32) / 255.0
+    return out, n
+
+
 def canonicalise(product: Product, params: dict = None) -> CanonicalImage:
     """Divide out predicted illumination and return albedo + phase congruency + mask."""
     return canonicalise_with_transform(product, params, None)
@@ -411,12 +511,18 @@ def canonicalise_with_transform(product: Product, params: dict = None,
     if params:
         p.update(params)
     for k in ("epsilon", "nscale", "norient", "photometric_model", "lambert_weight",
-              "dem_gsd_ratio_max", "illum_scale", "pose_trust_px"):
+              "dem_gsd_ratio_max", "illum_scale", "pose_trust_px", "mask_fill",
+              "clahe_clip", "clahe_grid"):
         if p.get(k) is None:
             p[k] = _DEFAULTS[k]
     scale_requested = str(p["illum_scale"])
     if scale_requested not in _ILLUM_SCALES:
         p["illum_scale"] = _DEFAULTS["illum_scale"]      # unknown policy: the safe one
+    mask_fill = str(p["mask_fill"]).strip().lower()
+    if mask_fill not in _MASK_FILLS:
+        mask_fill = _DEFAULTS["mask_fill"]               # unknown policy: the safe one
+    pc_on = _resolve_flag(p["phase_congruency"], auto=True)
+    clahe_on = _resolve_flag(p["clahe"], auto=False)
     meta = product.meta or {}
 
     img = _as_gray_float(product.array)
@@ -465,15 +571,39 @@ def canonicalise_with_transform(product: Product, params: dict = None,
         albedo = np.zeros((h, w), dtype=np.float32)
     else:
         albedo = np.clip((albedo - lo) / (hi - lo), 0.0, 1.0).astype(np.float32)
+
+    # CLAHE, on the stretched albedo and on the 8-bit view cv2.createCLAHE takes. It is
+    # off on the phase-congruency arm and that is a decision, not an oversight: the RIFT
+    # descriptor reads phase, which is already contrast-invariant, so CLAHE there only
+    # adds a spatially varying non-linearity and a step at every tile boundary. On the
+    # intensity arms (SIFT/ORB) local contrast is what the descriptor has to work with,
+    # so stages.py resolves "auto" to True there and to False here.
+    clahe_applied = False
+    if clahe_on and albedo.size:
+        g = max(1, int(p["clahe_grid"]))
+        equalised = cv2.createCLAHE(clipLimit=float(p["clahe_clip"]),
+                                    tileGridSize=(g, g)).apply(
+            np.clip(albedo * 255.0 + 0.5, 0.0, 255.0).astype(np.uint8))
+        albedo = (equalised.astype(np.float32) / 255.0)
+        clahe_applied = True
+
     albedo[mask != MASK_VALID] = 0.0
+
+    # Phase congruency does NOT see those zeros. `_fill_invalid` explains why; the short
+    # version is that a zeroed mask boundary is a sun-positioned edge inside the map whose
+    # job is to have no sun in it. The RETURNED albedo keeps the zeros -- the matcher, the
+    # ablation and the writers all read it -- so only the transform input changes.
+    pc_input, mask_fill_px = albedo, 0
+    if pc_on and mask_fill == "reflect":
+        pc_input, mask_fill_px = _fill_invalid(albedo, mask == MASK_VALID)
 
     pc = np.zeros((h, w), dtype=np.float32)
     pc_orient = np.zeros((h, w), dtype=np.float32)
     pc_status = "disabled"
-    if p["phase_congruency"]:
+    if pc_on:
         try:
             from samanvay.photometry.phasecong import phase_congruency
-            out = phase_congruency(albedo, nscale=int(p["nscale"]), norient=int(p["norient"]))
+            out = phase_congruency(pc_input, nscale=int(p["nscale"]), norient=int(p["norient"]))
             pc = np.nan_to_num(np.asarray(out["pc"], dtype=np.float32))
             pc_orient = np.nan_to_num(np.asarray(out["orientation"], dtype=np.float32))
             pc_status = "computed"
@@ -488,7 +618,14 @@ def canonicalise_with_transform(product: Product, params: dict = None,
         "lambert_weight": p["lambert_weight"],
         "epsilon": eps,
         "smooth_sigma": p["smooth_sigma"],
-        "phase_congruency": bool(p["phase_congruency"]),
+        "phase_congruency": pc_on,
+        "phase_congruency_requested": p["phase_congruency"],
+        "mask_fill": mask_fill,
+        "mask_fill_px": mask_fill_px,
+        "clahe": p["clahe"],
+        "clahe_applied": clahe_applied,
+        "clahe_clip": p["clahe_clip"],
+        "clahe_grid": p["clahe_grid"],
         "pc_status": pc_status,
         "nscale": int(p["nscale"]),
         "norient": int(p["norient"]),

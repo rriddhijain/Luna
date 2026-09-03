@@ -40,6 +40,7 @@ from scipy.stats import chi2 as _chi2
 
 from samanvay.geometry.init import _as_gdal, _gt_matrix, apply_transform
 from samanvay.geometry.refine import refine_matches
+from samanvay.geometry.uniformity import grid_shape
 from samanvay.geometry.verify import verify_matches
 from samanvay.io.loaders import load_product
 # Reuse rather than re-derive: _load_dem composes the DEM and image geotransforms
@@ -90,8 +91,19 @@ def _stretch(img):
     return np.clip((np.nan_to_num(a) - lo) / (hi - lo), 0.0, 1.0).astype(np.float32)
 
 
+def _band_cfg(config):
+    """config["band"] as the pipeline resolves it — the run's band reduction, not a default.
+
+    A basemap can be a cube (IIRS is ~250 bands), and load_product's `band_cfg` is what
+    decides which 2-D map comes out of it. Called without one it takes io/bands.py's own
+    pc1 default whatever the run asked for, so a caller who set band.reduce would be
+    localising against a different image from the one they configured.
+    """
+    return load_config(overrides=dict(config or {})).get("band")
+
+
 @lru_cache(maxsize=4)
-def _reilluminated(reference_path, dem_path, sun_az, sun_el, model):
+def _reilluminated(reference_path, dem_path, sun_az, sun_el, model, band_json="null"):
     """Basemap re-rendered under a new sun: (image [0,1], mode, info).
 
     With a DEM this is a real re-render: divide the measured basemap by the
@@ -104,8 +116,11 @@ def _reilluminated(reference_path, dem_path, sun_az, sun_el, model):
     illumination once (~1 s per render at 1024^2, cast-shadow march included).
     Ceiling: holds up to 4 basemaps in RAM. Upgrade path: pass the rendered basemap
     in explicitly if a caller ever needs more.
+
+    `band_json` is the JSON of config["band"], not the dict: an lru_cache key has to be
+    hashable, and two runs that reduce the same cube differently must not share a render.
     """
-    product = load_product(reference_path)
+    product = load_product(reference_path, band_cfg=json.loads(band_json))
     meta = product.meta or {}
     img = _stretch(np.asarray(product.array, dtype=np.float64))
     gsd = meta.get("gsd_m")
@@ -160,7 +175,7 @@ def _reilluminated(reference_path, dem_path, sun_az, sun_el, model):
 def simulate_descent_frame(reference_path, dem_path=None, center_xy=None,
                            altitude_scale=1.5, sun=(175.0, 45.0), seed=0,
                            frame_size=320, rotation_deg=6.0, noise_sigma=0.02,
-                           photometric_model="lommel_seeliger") -> dict:
+                           photometric_model="lommel_seeliger", config=None) -> dict:
     """Simulate one lander camera frame over a known basemap point.
 
     altitude_scale is frame pixels per reference pixel: 1.0 is the basemap's own
@@ -170,15 +185,20 @@ def simulate_descent_frame(reference_path, dem_path=None, center_xy=None,
 
     Returns the frame, its metadata, the TRUE centre in reference pixels, and the true
     frame -> reference matrix, so localisation error is measurable rather than asserted.
+
+    `config` is the run config, and only config["band"] is read here: the frame is cut
+    out of the basemap, so it has to be cut out of the SAME reduction of it that
+    localise() will match against.
     """
-    product = load_product(reference_path)
+    band_json = json.dumps(_band_cfg(config), sort_keys=True)
+    product = load_product(reference_path, band_cfg=json.loads(band_json))
     meta = product.meta or {}
     base_h, base_w = np.asarray(product.array).shape[:2]
     sun_az, sun_el = float(sun[0]), float(sun[1])
 
     base, illum_mode, illum_info = _reilluminated(
         str(reference_path), str(dem_path) if dem_path else None,
-        sun_az, sun_el, str(photometric_model))
+        sun_az, sun_el, str(photometric_model), band_json)
 
     if center_xy is None:
         center_xy = _frame_center((base_h, base_w))
@@ -244,15 +264,19 @@ def simulate_descent_frame(reference_path, dem_path=None, center_xy=None,
     }
 
 
-def _as_product(obj) -> Product:
-    """Accept a Product, a simulate_descent_frame() dict, or a path — return a Product."""
+def _as_product(obj, band_cfg=None) -> Product:
+    """Accept a Product, a simulate_descent_frame() dict, or a path — return a Product.
+
+    `band_cfg` only reaches the path branch: a Product handed in was already reduced by
+    whoever loaded it, and re-reducing it here is not this function's call to make.
+    """
     if isinstance(obj, Product):
         return obj
     if isinstance(obj, dict) and "image" in obj:
         return Product(path=str(obj.get("reference_path") or "<simulated_frame>"),
                        array=obj["image"], meta=dict(obj.get("meta") or {}))
     if isinstance(obj, str):
-        return load_product(obj)
+        return load_product(obj, band_cfg=band_cfg)
     raise TypeError(f"expected Product, frame dict or path, got {type(obj).__name__}")
 
 
@@ -308,7 +332,16 @@ def position_covariance(model, H, src_xy, ref_xy, at_xy):
     """
     src = np.asarray(src_xy, dtype=np.float64).reshape(-1, 2)
     ref = np.asarray(ref_xy, dtype=np.float64).reshape(-1, 2)
-    k = _DOF.get(str(model))
+    # verify.py names a model with an accepted spline "similarity+tps", but `H` is still
+    # the 3x3 global model and the spline is a separate displacement field with its own
+    # parameters — so the parametrisation this propagates is the part before the "+".
+    # Left unhandled, _DOF misses and a descent that fitted a TPS returns NO ellipse at
+    # all: on the shipped 128 px fixture that was a 0.037 px fix delivered with no
+    # uncertainty, which this module's own docstring calls not a fix. The ellipse is
+    # therefore the GLOBAL model's precision and localise() records that it excludes the
+    # spline rather than letting the reader assume it covers the whole model.
+    model = str(model).split("+", 1)[0]
+    k = _DOF.get(model)
     if k is None:
         return None, f"model {model!r} has no covariance parametrisation"
     n = len(src)
@@ -397,16 +430,40 @@ def localise(frame, reference, config=None, confidence=0.95) -> dict:
     same code the registration numbers do. No second matcher exists in this file.
     """
     cfg = load_config(overrides=_deep(dict(_TRN_CONFIG), dict(config or {})))
-    src_product = _as_product(frame)
-    ref_product = _as_product(reference)
+    src_product = _as_product(frame, cfg.get("band"))
+    ref_product = _as_product(reference, cfg.get("band"))
+    # match.method, photometry.phase_congruency and photometry.clahe ship as "auto" and
+    # resolve from the pair's sun geometry in pipeline/stages. TRN runs the registration
+    # engine unchanged, so it resolves them through the same function rather than a
+    # second copy of the rule: without this the detector is handed the string "auto".
+    from samanvay.pipeline.stages import resolve_auto
+    cfg, _resolved = resolve_auto(cfg, src_product.meta, ref_product.meta)
 
     src_canon = canonicalise(src_product, cfg.get("photometry"))
     ref_canon = canonicalise(ref_product, cfg.get("photometry"))
 
+    # cell_budgets defaults to grid_n**2, which is one cell short per extra column the
+    # moment the frame is not square: match_tiled tiles the SOURCE on the N x M grid from
+    # geometry.uniformity.grid_shape, and any cell id past the budget dict silently falls
+    # back to match_tiled's hardcoded quotas instead of the configured ones. A simulated
+    # frame is square so the default happens to be right there, but `frame` may be any
+    # Product. grid_shape is asked rather than re-derived — it is the one place the shape
+    # is computed.
+    # grid_aspect lives at the TOP level of the config (pipeline/config.py DEFAULTS) and
+    # match_tiled reads it out of the MATCH section, so it has to travel — the same hop
+    # pipeline/stages.py makes. Reading it from the match section here instead, as this
+    # did, means it is never found and both sides silently take the default: a TRN run
+    # configured with grid_aspect=False still got the 2x4 aspect grid on a 160x320 frame
+    # where the caller asked for 2x2.
+    aspect = bool(cfg.get("grid_aspect", True))
+    match_cfg = dict(cfg.get("match") or {})
+    match_cfg["grid_aspect"] = aspect
+    grid_n = int(cfg.get("grid_n", 1))
+    rows, cols = grid_shape(src_canon.albedo.shape[:2], grid_n, aspect)
     matches, cell_info = match_tiled(
         src_canon, ref_canon,
-        grid_n=int(cfg.get("grid_n", 1)), halo_px=int(cfg.get("halo_px", 0)),
-        config=cfg.get("match"), cell_budgets=cell_budgets(cfg), init=None)
+        grid_n=grid_n, halo_px=int(cfg.get("halo_px", 0)),
+        config=match_cfg, cell_budgets=cell_budgets(cfg, rows * cols), init=None)
     reg = verify_matches(matches, cfg.get("geometry"), init=None)
 
     # P4, exactly as pipeline/stages.py runs it: refinement moves the points, so the
@@ -447,7 +504,20 @@ def localise(frame, reference, config=None, confidence=0.95) -> dict:
         "error_m": None,
         "ellipse": None,
         "ellipse_reason": None,
-        "model": metrics.get("model"),
+        # verify.py puts the ladder RUNG in metrics["model"] and the DELIVERED model in
+        # model_type, which is "similarity+tps" when a spline was kept. This artifact
+        # names what shipped: reporting the rung meant trn.json claimed a similarity
+        # whose rmse_px that similarity does not achieve — measured on a forced-TPS
+        # fixture frame, 0.251 px with the spline against 0.391 px for the 3x3 alone.
+        "model": reg.model_type,
+        # H_frame_to_ref and estimated_center_xy below are the GLOBAL 3x3 ONLY. The
+        # spline is a reference -> source displacement by construction and the frozen
+        # contract forbids inverting it, so there is nothing to push the frame centre
+        # forward through: when this is True the position fix is the global model's
+        # answer while rmse_px is the full model's residual, and the reader is told so
+        # rather than left to reconcile two numbers from different models. Always
+        # present, including on the paths that return before an ellipse exists.
+        "warp_applied": bool(getattr(reg, "warp", None) is not None),
         "inlier_count": n_inl,
         "n_matches": int(metrics.get("n_matches", 0)),
         "rmse_px": metrics.get("rmse_px"),            # SOURCE (frame) px, repo convention
@@ -501,6 +571,13 @@ def localise(frame, reference, config=None, confidence=0.95) -> dict:
     out["ellipse"] = error_ellipse(cov, confidence=confidence, gsd_m=gsd)
     out["ellipse"]["dof"] = int(dof)
     out["ellipse"]["from_inliers"] = n_inl
+    # The propagation is over the 3x3 parameters only, and so is the fix it describes:
+    # `est` above is apply_transform(reg.params, centre) and the spline never touches it
+    # (it maps reference -> source, and no inverse TPS is computed anywhere). So the
+    # ellipse is consistent with the delivered fix — both are the global model — and
+    # this flag says the non-rigid part of the model contributes no variance term here.
+    # See "warp_applied" above for what the spline does and does not affect.
+    out["ellipse"]["excludes_warp"] = bool(getattr(reg, "warp", None) is not None)
     if out["error_px"] is not None:
         # Does the truth actually fall inside the stated ellipse? The one honest test
         # of a covariance: Mahalanobis distance against the same chi-square factor.
@@ -519,7 +596,7 @@ def run_trn_demo(reference_path, out_dir, n_frames=5, dem_path=None,
                  seed=0, confidence=0.95, config=None, track_px=60.0) -> dict:
     """Fly a short descent over the basemap, localise every frame, write trn.json + PNG."""
     os.makedirs(out_dir, exist_ok=True)
-    reference = load_product(reference_path)
+    reference = load_product(reference_path, band_cfg=_band_cfg(config))
     base_h, base_w = np.asarray(reference.array).shape[:2]
     gsd = reference.meta.get("gsd_m") if reference.meta else None
     gsd = float(gsd) if gsd else None
@@ -538,7 +615,7 @@ def run_trn_demo(reference_path, out_dir, n_frames=5, dem_path=None,
         sim = simulate_descent_frame(
             reference_path, dem_path=dem_path, center_xy=center, altitude_scale=s,
             sun=sun, seed=seed + i, frame_size=frame_size,
-            rotation_deg=4.0 * (i - (len(scales) - 1) / 2.0))
+            rotation_deg=4.0 * (i - (len(scales) - 1) / 2.0), config=config)
         fix = localise(sim, reference, config=config, confidence=confidence)
         fix.update({
             "frame": i,

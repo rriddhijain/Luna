@@ -1,0 +1,55 @@
+{
+    "model_type": "homography",
+    "params": [
+        [
+            0.5011133414112418,
+            -0.08697390012937223,
+            84.68018711356956
+        ],
+        [
+            0.09150181296482043,
+            0.499793815036693,
+            5.193448114101699
+        ],
+        [
+            1.5226022451117669e-05,
+            5.743800852887446e-06,
+            1.0
+        ]
+    ],
+    "init_params": [
+        [
+            0.49265552365567805,
+            -0.087986190985109,
+            86.28769023798058
+        ],
+        [
+            0.0862621988483155,
+            0.49279280637410955,
+            7.898723047244653
+        ],
+        [
+            0.0,
+            0.0,
+            1.0
+        ]
+    ],
+    "model_margin": 0.1,
+    "rejected_models": [
+        {
+            "model_type": "similarity",
+            "reason": "inlier RMSE outside model_margin of the best fit",
+            "rmse_px": 1.4754108232938055,
+            "rmse_common_px": 2.155832208790367,
+            "inlier_count": 46
+        },
+        {
+            "model_type": "affine",
+            "reason": "inlier RMSE outside model_margin of the best fit",
+            "rmse_px": 1.5984491407610102,
+            "rmse_common_px": 2.148659922019715,
+            "inlier_count": 46
+        }
+    ],
+    "warp": null
+}

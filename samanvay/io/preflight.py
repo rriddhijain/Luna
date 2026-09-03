@@ -27,6 +27,8 @@ from samanvay.io.loaders import load_product
 
 # Fields and the capability each one unlocks. Used for both the report and `enables`.
 _PHYSICS_FIELDS = ("sun_az_deg", "sun_el_deg", "gsd_m")
+# preflight never runs the band reduction it warns about — see check_product.
+_PREFLIGHT_BAND_CFG = {"reduce": "band", "index": 1}
 _GEO_FIELDS = ("geotransform",)
 
 
@@ -81,7 +83,10 @@ def check_product(path, role="source") -> dict:
         return result
 
     try:
-        product = load_product(str(path))
+        # Band 1, deliberately: preflight reports what the run WILL do, it does not do it.
+        # Letting the default pc1 reduction run here would spend a full PCA pass over the
+        # cube just to print that the cube will be reduced.
+        product = load_product(str(path), band_cfg=_PREFLIGHT_BAND_CFG)
     except Exception as exc:
         result["issues"].append(_issue(
             "blocker", f"{role}: cannot be opened as a raster ({type(exc).__name__}: {exc})",
@@ -126,9 +131,20 @@ def check_product(path, role="source") -> dict:
         result["issues"].append(_issue(
             "note", f"{role}: no CRS. Not fatal — registration is in pixels."))
     if (result.get("band_count") or 1) > 1:
+        # A warning, not a note: the array that gets matched is a derived map, not any
+        # band in this file, and which map it is changes the result. The default is the
+        # SNR-screened PC1 (io/bands.reduce_bands) — a pseudo-panchromatic structural
+        # image, not band 1 and not the mean.
+        # preflight reads no run config, so it names the key and its default rather than
+        # claiming to know what the register call will set.
         result["issues"].append(_issue(
-            "note", f"{role}: {result['band_count']} bands; the pipeline uses band 1 only",
-            "for IIRS, choose a band or build a composite first and say which"))
+            "warning",
+            f"{role}: {result['band_count']} bands; the cube will be reduced to one 2-D "
+            f"map by band.reduce (default pc1) before matching, so the registration is of "
+            f"that derived map and not of any single band",
+            f"accept the default (band.reduce=pc1: per-band SNR screen, then the first "
+            f"principal component), or pin a band with "
+            f"--set band.reduce=band --set band.index=N"))
     if result.get("constant"):
         result["issues"].append(_issue(
             "blocker", f"{role}: the raster is constant — no texture to match",
@@ -180,7 +196,8 @@ def check_pair(source_path, ref_path, dem_path=None) -> dict:
         out["scale_ratio"] = round(float(sm["gsd_m"]) / float(rm["gsd_m"]), 4)
 
     try:
-        source, reference = load_product(str(source_path)), load_product(str(ref_path))
+        source = load_product(str(source_path), band_cfg=_PREFLIGHT_BAND_CFG)
+        reference = load_product(str(ref_path), band_cfg=_PREFLIGHT_BAND_CFG)
         H, info = coarse_init_info(source, reference)
         out["init_method"] = info.get("method")
         out["crs_match"] = info.get("crs_match")

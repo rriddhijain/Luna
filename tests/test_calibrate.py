@@ -108,3 +108,49 @@ def test_degenerate_inputs_do_not_crash():
     rows, summary, _ = calibrate.calibrate_sigma(
         textures=(), blurs=(), noises=(), fixture_dir="does/not/exist")
     assert rows == [] and summary["fit_arm"] is None and np.isnan(summary["k_fit"])
+
+
+# ------------------------------------------------------- bench/harness + bench/ablate
+# The evidence tables come out of these two, so the things that would quietly falsify a
+# table get a check: an ablation key that no longer exists (the arm then measures nothing),
+# and the per-pair delta the sweep labels its columns with.
+
+def test_every_ablation_arm_overrides_a_key_that_the_baseline_declares():
+    from bench import ablate
+
+    for name, delta in ablate.VARIANTS:
+        for section, keys in delta.items():
+            assert section in ablate.BASELINE, f"{name}: unknown config section {section}"
+            for key in keys:
+                assert key in ablate.BASELINE[section], f"{name}: {section}.{key} not in BASELINE"
+
+
+def test_run_arms_names_rows_by_arm_and_keeps_the_measured_delta(tmp_path, monkeypatch):
+    import json
+
+    from bench import harness
+
+    manifest = tmp_path / "m.json"
+    manifest.write_text(json.dumps({"pairs": [
+        {"delta_sun_az_deg": 90.0, "source": "s.tif", "reference": "r.tif"},   # sweep shape
+        {"name": "real_pair", "source": "a.tif", "reference": "b.tif"},        # real-pair shape
+    ]}))
+
+    def fake_run_one(name, source, reference, out_dir, config=None):
+        # a real pair has no manifest delta; the pipeline measures one off the sidecars
+        return {"name": name, "out_dir": out_dir, "status": "ok", "wall_s": 0.0,
+                "delta_sun_az_deg": 42.0, "cache_enabled": (config or {}).get("cache")}
+
+    monkeypatch.setattr(harness, "run_one", fake_run_one)
+    rows = harness.run_arms(str(manifest), out_root=str(tmp_path / "out"),
+                            arms={"auto": {}, "sift": {"match": {"method": "sift"}}})
+
+    assert [r["name"] for r in rows] == [
+        "auto@dsun_090", "auto@real_pair", "sift@dsun_090", "sift@real_pair"]
+    # the pipeline's measured delta is never overwritten; the manifest's world delta, which is
+    # a different number on a rotated raster, gets its own column and only where it is stated
+    assert [r["delta_sun_az_deg"] for r in rows] == [42.0, 42.0, 42.0, 42.0]
+    assert [r.get("manifest_delta_sun_az_deg") for r in rows] == [90.0, None, 90.0, None]
+    # a sweep runs with the canonicalisation cache off: its key cannot tell two pairs apart
+    assert all(r["cache_enabled"] == {"enabled": False} for r in rows)
+    assert (tmp_path / "out" / "dsun_sweep.csv").exists()

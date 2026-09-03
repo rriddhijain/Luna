@@ -1,0 +1,414 @@
+{
+    "rmse_px": 0.5399780652216261,
+    "inlier_count": 4,
+    "inlier_ratio": 0.005025125628140704,
+    "coverage_pct": 25.0,
+    "dispersion_cv": 1.7320508075688772,
+    "grid_n": 4,
+    "runtime_s": 15.742,
+    "match_count": 796,
+    "mean_sigma_px": 1.6013971290603763,
+    "refined_count": 229,
+    "model_type": "affine",
+    "model_margin": 0.1,
+    "cell_counts": [
+        0,
+        1,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+    ],
+    "cell_states": [
+        "insufficient_texture",
+        "populated",
+        "insufficient_texture",
+        "populated",
+        "populated",
+        "insufficient_texture",
+        "insufficient_texture",
+        "insufficient_texture",
+        "populated",
+        "insufficient_texture",
+        "insufficient_texture",
+        "insufficient_texture",
+        "insufficient_texture",
+        "insufficient_texture",
+        "insufficient_texture",
+        "insufficient_texture"
+    ],
+    "gt_rmse_px": 190.04109742262764,
+    "gt_bias_x": 83.07669696948363,
+    "gt_bias_y": 95.79855509125912,
+    "gt_p90_px": 299.7684795418614,
+    "stage_s": {
+        "load": 0.05,
+        "coarse_init": 0.0,
+        "canonicalise": 0.029,
+        "match": 15.335,
+        "verify": 0.009,
+        "refine": 0.318,
+        "metrics": 0.004,
+        "warp": 0.003
+    },
+    "subpixel_applied": true,
+    "init_method": "geotransform",
+    "init_crs_match": true,
+    "illum_mode": "empirical",
+    "pc_status": "computed",
+    "canonicalised": true,
+    "model_candidates": {
+        "affine": {
+            "rmse_px": 0.5399780652216261,
+            "rmse_common_px": 0.5399780652216261,
+            "inlier_count": 4,
+            "redundancy": 1
+        }
+    },
+    "redundancy": 1,
+    "rmse_trustworthy": false,
+    "rmse_warning": "4 inliers for a 3-point model (redundancy 1): rmse_px is near-zero by construction and must not be quoted as accuracy",
+    "models_rejected": {
+        "homography": "exactly determined: 4 inliers for a 4-point model, RMSE would be 0 by construction"
+    },
+    "verify_status": "ok",
+    "cell_info": {
+        "mode": "init_projected",
+        "grid_n": 4,
+        "method": "l2",
+        "search_margin_px": null,
+        "cells": {
+            "0": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.010932346596682262,
+                "src_core": [
+                    0,
+                    0,
+                    429,
+                    429
+                ],
+                "ref_window": [
+                    52,
+                    0,
+                    487,
+                    363
+                ],
+                "search_margin_px": 72.25137952004188
+            },
+            "1": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.010068408669807271,
+                "src_core": [
+                    429,
+                    0,
+                    858,
+                    429
+                ],
+                "ref_window": [
+                    224,
+                    0,
+                    705,
+                    412
+                ],
+                "search_margin_px": 80.10439698762318
+            },
+            "2": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.011055922270875542,
+                "src_core": [
+                    858,
+                    0,
+                    1286,
+                    429
+                ],
+                "ref_window": [
+                    434,
+                    0,
+                    915,
+                    453
+                ],
+                "search_margin_px": 79.98169358969221
+            },
+            "3": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.009872800082590292,
+                "src_core": [
+                    1286,
+                    0,
+                    1715,
+                    429
+                ],
+                "ref_window": [
+                    652,
+                    45,
+                    1024,
+                    480
+                ],
+                "search_margin_px": 72.2513795200419
+            },
+            "4": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.009959737232464506,
+                "src_core": [
+                    0,
+                    429,
+                    429,
+                    858
+                ],
+                "ref_window": [
+                    4,
+                    100,
+                    460,
+                    582
+                ],
+                "search_margin_px": 80.10439698762318
+            },
+            "5": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.011231193049374867,
+                "src_core": [
+                    429,
+                    429,
+                    858,
+                    858
+                ],
+                "ref_window": [
+                    181,
+                    133,
+                    672,
+                    624
+                ],
+                "search_margin_px": 81.63086895063554
+            },
+            "6": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.012526414395573273,
+                "src_core": [
+                    858,
+                    429,
+                    1286,
+                    858
+                ],
+                "ref_window": [
+                    392,
+                    174,
+                    882,
+                    665
+                ],
+                "search_margin_px": 81.60701782621348
+            },
+            "7": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 46,
+                "masked_frac": 0.011388766633521879,
+                "src_core": [
+                    1286,
+                    429,
+                    1715,
+                    858
+                ],
+                "ref_window": [
+                    603,
+                    217,
+                    1024,
+                    698
+                ],
+                "search_margin_px": 80.10439698762318
+            },
+            "8": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.009874082303988846,
+                "src_core": [
+                    0,
+                    858,
+                    429,
+                    1286
+                ],
+                "ref_window": [
+                    0,
+                    311,
+                    419,
+                    792
+                ],
+                "search_margin_px": 79.98169358969226
+            },
+            "9": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.013179966450994488,
+                "src_core": [
+                    429,
+                    858,
+                    858,
+                    1286
+                ],
+                "ref_window": [
+                    140,
+                    344,
+                    631,
+                    834
+                ],
+                "search_margin_px": 81.60701782621348
+            },
+            "10": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.011966110577343,
+                "src_core": [
+                    858,
+                    858,
+                    1286,
+                    1286
+                ],
+                "ref_window": [
+                    351,
+                    385,
+                    841,
+                    875
+                ],
+                "search_margin_px": 81.48431442828254
+            },
+            "11": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.01099601333246193,
+                "src_core": [
+                    1286,
+                    858,
+                    1715,
+                    1286
+                ],
+                "ref_window": [
+                    563,
+                    427,
+                    1019,
+                    908
+                ],
+                "search_margin_px": 79.98169358969224
+            },
+            "12": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.012116865263718411,
+                "src_core": [
+                    0,
+                    1286,
+                    429,
+                    1715
+                ],
+                "ref_window": [
+                    0,
+                    528,
+                    370,
+                    963
+                ],
+                "search_margin_px": 72.2513795200419
+            },
+            "13": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.009313142180275047,
+                "src_core": [
+                    429,
+                    1286,
+                    858,
+                    1715
+                ],
+                "ref_window": [
+                    107,
+                    555,
+                    589,
+                    1012
+                ],
+                "search_margin_px": 80.10439698762319
+            },
+            "14": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.009699801755876522,
+                "src_core": [
+                    858,
+                    1286,
+                    1286,
+                    1715
+                ],
+                "ref_window": [
+                    318,
+                    596,
+                    799,
+                    1024
+                ],
+                "search_margin_px": 79.98169358969221
+            },
+            "15": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 50,
+                "masked_frac": 0.01176911666422156,
+                "src_core": [
+                    1286,
+                    1286,
+                    1715,
+                    1715
+                ],
+                "ref_window": [
+                    536,
+                    645,
+                    970,
+                    1024
+                ],
+                "search_margin_px": 72.2513795200419
+            }
+        }
+    },
+    "gt_source": "gt.json"
+}

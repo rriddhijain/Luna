@@ -1,0 +1,29 @@
+{
+  "product_id": "synth_reference",
+  "instrument": "SYNTH-NAC",
+  "synthetic": true,
+  "gsd_m": 1.0,
+  "sun_az_deg": 135.0,
+  "sun_az_world_deg": 135.0,
+  "sun_az_frame": "image",
+  "sun_el_deg": 65.0,
+  "incidence_deg": 25.0,
+  "emission_deg": 0.0,
+  "shape": [
+    512,
+    512
+  ],
+  "dtype": "uint16",
+  "geotransform": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    -1.0,
+    512.0
+  ],
+  "crs": "+proj=eqc +lat_ts=0 +lat_0=0 +lon_0=0 +x_0=0 +y_0=0 +a=1737400 +b=1737400 +units=m +no_defs",
+  "geotransform_exact": true,
+  "geotransform_max_error_m": 0.0,
+  "note": "the reference defines the world frame; its geotransform is exact by construction."
+}

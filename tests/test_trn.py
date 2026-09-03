@@ -16,6 +16,7 @@ import rasterio
 from rasterio.transform import Affine
 
 from samanvay import trn
+from samanvay.geometry.init import apply_transform
 from samanvay.io.loaders import load_product
 from samanvay.photometry.shading import predicted_illumination
 
@@ -226,3 +227,197 @@ def test_error_ellipse_orientation_follows_the_covariance():
     assert ell["semi_major_m"] == pytest.approx(2.0 * ell["semi_major_px"])
     assert abs(abs(ell["orientation_deg"]) - 90.0) < 1e-6
     assert ell["frame"] == "reference_px"
+
+
+# ------------------------------------------- the basemap the caller actually configured
+
+
+def _cube(path, bands, meta):
+    """A multi-band basemap: what an IIRS-class reference looks like to load_product."""
+    stack = np.asarray(bands, dtype=np.uint16)
+    with rasterio.open(path, "w", driver="GTiff", height=stack.shape[1],
+                       width=stack.shape[2], count=stack.shape[0], dtype="uint16",
+                       transform=Affine(1.0, 0.0, 0.0, 0.0, -1.0, stack.shape[1])) as dst:
+        dst.write(stack)
+    with open(str(path) + ".json", "w") as handle:
+        json.dump(meta, handle)
+    return str(path)
+
+
+def test_a_cube_basemap_is_reduced_by_the_configured_band_not_the_default(tmp_path):
+    """A multi-band reference must go through config["band"], not io/bands.py's pc1 default.
+
+    The simulated frame is cut out of the basemap, so if the simulator reduces the cube
+    one way and localise() reduces it another, the demo is matching two different images
+    and every TRN number describes a pairing that could not occur in a real descent.
+    """
+    size = 96
+    structure = (_terrain(size, seed=11, scale=6) * 50000).astype(np.uint16)
+    flipped = np.ascontiguousarray(structure[::-1, ::-1])
+    ref_path = _cube(tmp_path / "cube.tif", [structure, structure, flipped],
+                     {"product_id": "cube_ref", "gsd_m": 1.0,
+                      "sun_az_deg": SUN_AZ, "sun_el_deg": SUN_EL})
+
+    pinned = {"band": {"index": 3, "reduce": "band"}}
+    sim = trn.simulate_descent_frame(
+        ref_path, center_xy=(size / 2.0, size / 2.0), altitude_scale=1.0,
+        sun=(SUN_AZ, SUN_EL), seed=0, frame_size=size, rotation_deg=0.0,
+        noise_sigma=0.0, config=pinned)
+
+    # The oracle is the same renderer fed the configured reduction directly: at scale 1,
+    # no rotation and no noise the frame is that render, pixel for pixel.
+    want, _, _ = trn._reilluminated(ref_path, None, SUN_AZ, SUN_EL, "lommel_seeliger",
+                                    json.dumps(trn._band_cfg(pinned), sort_keys=True))
+    assert np.allclose(sim["image"], want, atol=1e-5)
+
+    # And it is genuinely a different image from the default reduction — band 3 is the
+    # flipped copy, so a run that ignored the config would fail this.
+    default, _, _ = trn._reilluminated(ref_path, None, SUN_AZ, SUN_EL, "lommel_seeliger",
+                                       "null")
+    assert not np.allclose(sim["image"], default, atol=1e-3)
+
+
+def test_a_non_square_frame_gets_a_budget_for_every_cell(tmp_path, monkeypatch):
+    """cell_budgets must cover the N x M grid match_tiled actually tiles, not grid_n**2.
+
+    grid_n**2 is right only for a square frame. On a 2:1 frame at grid_n=2 the grid is
+    2 x 4, and the four cell ids past the budget dict fall back to match_tiled's own
+    hardcoded quotas — the configured min/max silently stop applying to half the frame.
+    """
+    from samanvay.types import MatchSet
+
+    captured = {}
+
+    def _stub(src_canon, ref_canon, **kwargs):
+        captured["budgets"] = kwargs.get("cell_budgets")
+        captured["grid_n"] = kwargs.get("grid_n")
+        empty = MatchSet(src_xy=np.zeros((0, 2)), ref_xy=np.zeros((0, 2)),
+                         score=np.zeros(0, np.float32), method=np.zeros(0, np.uint8),
+                         cell=np.zeros(0, np.int32))
+        return empty, {}
+
+    monkeypatch.setattr(trn, "match_tiled", _stub)
+
+    frame = (_terrain(160, seed=2, scale=6) * 60000).astype(np.uint16)[:, :]
+    frame = np.hstack([frame, frame])                       # 160 x 320, a 1:2 frame
+    ref = (_terrain(160, seed=3, scale=6) * 60000).astype(np.uint16)
+    frame_path = _write(tmp_path / "wide.tif", frame, {"product_id": "wide", "gsd_m": 1.0})
+    ref_path = _write(tmp_path / "base.tif", ref, {"product_id": "base", "gsd_m": 1.0})
+
+    fix = trn.localise(frame_path, ref_path, config={"grid_n": 2})
+    assert captured["grid_n"] == 2
+    assert sorted(captured["budgets"]) == list(range(8))     # 2 rows x 4 cols
+    assert fix["status"] == "failed"                         # no matches from the stub
+
+
+def test_a_square_frame_keeps_the_square_budget(tmp_path, monkeypatch):
+    """The aspect rule must not move the square case: grid_n=2 on a square frame is 4 cells."""
+    from samanvay.types import MatchSet
+
+    captured = {}
+
+    def _stub(src_canon, ref_canon, **kwargs):
+        captured["budgets"] = kwargs.get("cell_budgets")
+        empty = MatchSet(src_xy=np.zeros((0, 2)), ref_xy=np.zeros((0, 2)),
+                         score=np.zeros(0, np.float32), method=np.zeros(0, np.uint8),
+                         cell=np.zeros(0, np.int32))
+        return empty, {}
+
+    monkeypatch.setattr(trn, "match_tiled", _stub)
+    img = (_terrain(160, seed=4, scale=6) * 60000).astype(np.uint16)
+    path = _write(tmp_path / "sq.tif", img, {"product_id": "sq", "gsd_m": 1.0})
+    trn.localise(path, path, config={"grid_n": 2})
+    assert sorted(captured["budgets"]) == list(range(4))
+
+
+def test_an_accepted_spline_does_not_cost_the_error_ellipse():
+    """"similarity+tps" is still a similarity as far as the covariance is concerned.
+
+    verify.py renames the model when a TPS is kept, and _DOF is keyed on the ladder's
+    names — so before the suffix was stripped, every descent frame that fitted a spline
+    came back with ellipse=None: a position fix with no uncertainty, which this module
+    exists to refuse to produce.
+    """
+    rng = np.random.default_rng(0)
+    src = rng.uniform(0.0, 100.0, size=(30, 2))
+    ref = src + 0.05 * rng.standard_normal(src.shape)
+    plain, dof = trn.position_covariance("similarity", np.eye(3), src, ref, (50.0, 50.0))
+    tps, dof_tps = trn.position_covariance("similarity+tps", np.eye(3), src, ref,
+                                           (50.0, 50.0))
+    assert plain is not None and tps is not None
+    assert dof_tps == dof
+    assert np.array_equal(tps, plain)          # the 3x3 part is what is propagated
+    # An unknown model is still refused: the strip must not turn every name into a match.
+    assert trn.position_covariance("bilinear+tps", np.eye(3), src, ref, (5.0, 2.0))[0] is None
+
+
+# ------------------------------------------- the artifact must name the delivered model
+
+
+def test_grid_aspect_false_is_honoured_and_reaches_the_matcher(tmp_path, monkeypatch):
+    """grid_aspect is a TOP-level key and match_tiled reads it from the match section.
+
+    Without the hop pipeline/stages.py makes, neither side ever finds it: a caller who
+    asked for a square grid still got the 2 x 4 aspect grid on a 160 x 320 frame, and
+    nothing said so. Both the budget and the matcher must see the same answer, and it
+    must be the one that was configured.
+    """
+    from samanvay.types import MatchSet
+
+    captured = {}
+
+    def _stub(src_canon, ref_canon, **kwargs):
+        captured["budgets"] = kwargs.get("cell_budgets")
+        captured["grid_aspect"] = (kwargs.get("config") or {}).get("grid_aspect")
+        empty = MatchSet(src_xy=np.zeros((0, 2)), ref_xy=np.zeros((0, 2)),
+                         score=np.zeros(0, np.float32), method=np.zeros(0, np.uint8),
+                         cell=np.zeros(0, np.int32))
+        return empty, {}
+
+    monkeypatch.setattr(trn, "match_tiled", _stub)
+    frame = (_terrain(160, seed=5, scale=6) * 60000).astype(np.uint16)
+    frame = np.hstack([frame, frame])                        # 160 x 320
+    path = _write(tmp_path / "wide.tif", frame, {"product_id": "wide", "gsd_m": 1.0})
+    ref = _write(tmp_path / "base.tif",
+                 (_terrain(160, seed=6, scale=6) * 60000).astype(np.uint16),
+                 {"product_id": "base", "gsd_m": 1.0})
+
+    trn.localise(path, ref, config={"grid_n": 2, "grid_aspect": False})
+    assert captured["grid_aspect"] is False                  # it travelled to match_tiled
+    assert sorted(captured["budgets"]) == list(range(4))     # 2 x 2, as asked
+
+    trn.localise(path, ref, config={"grid_n": 2})            # default is still the aspect grid
+    assert captured["grid_aspect"] is True
+    assert sorted(captured["budgets"]) == list(range(8))
+
+
+def test_the_fix_names_the_model_that_was_actually_delivered(tmp_path):
+    """An accepted spline must be visible in trn.json, not only inside the ellipse.
+
+    verify.py reports the ladder RUNG in metrics["model"] and the delivered model in
+    model_type. Quoting the rung made trn.json claim a plain similarity while rmse_px
+    beside it was the full model's residual — the same "the artifact does not describe
+    what shipped" defect the transform.json warp block exists to close. geometry.tps
+    defaults to "auto" and this synthetic scene accepts one, so the default TRN path was
+    the affected path, not a corner case. `warp_applied` is a top-level key because
+    ellipse["excludes_warp"] is absent on every fix that has no ellipse.
+    """
+    ref_path, dem_path = _scene(tmp_path, size=192)
+    frame = trn.simulate_descent_frame(ref_path, dem_path, altitude_scale=1.0,
+                                       sun=(SUN_AZ, SUN_EL), seed=0, frame_size=128,
+                                       rotation_deg=0.0, noise_sigma=0.0)
+
+    fix = trn.localise(frame, ref_path)
+    assert fix["status"] == "ok"
+    assert fix["warp_applied"] is True
+    assert fix["model"].endswith("+tps")
+    # The fix itself is still the global 3x3 — the spline maps reference -> source and no
+    # inverse TPS exists — so the position and its ellipse come from the same model, and
+    # warp_applied is what tells the reader that rmse_px does not.
+    centre = apply_transform(np.asarray(fix["H_frame_to_ref"]), [fix["frame_center_xy"]])[0]
+    assert fix["estimated_center_xy"] == pytest.approx(tuple(centre), abs=1e-12)
+
+    off = trn.localise(frame, ref_path, config={"geometry": {"tps": False}})
+    assert off["status"] == "ok"
+    assert off["warp_applied"] is False
+    assert "+tps" not in off["model"]

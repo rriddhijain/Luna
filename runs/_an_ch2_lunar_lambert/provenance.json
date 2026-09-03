@@ -1,0 +1,96 @@
+{
+    "timestamp_utc": "2026-09-02T13:27:08.790983+00:00",
+    "git_sha": "bbd5ceaf937f5795e3050ee4967e874714b87a84",
+    "git_branch": "foundation-and-evidence",
+    "git_dirty": true,
+    "seed": null,
+    "config": {
+        "seed": null,
+        "grid_n": 4,
+        "halo_px": 64,
+        "nodata": null,
+        "warp_interp": "cubic",
+        "cache": {
+            "enabled": true,
+            "dir": ".cache/samanvay"
+        },
+        "photometry": {
+            "canonicalise": true,
+            "phase_congruency": true,
+            "photometric_model": "lunar_lambert",
+            "dem_path": "data/real/ch2_ch2/dem.tif"
+        },
+        "match": {
+            "method": "rift",
+            "coarse_init": true,
+            "cascade_enabled": true,
+            "uniformity": true,
+            "min_matches": 5,
+            "max_matches": 50,
+            "cascade": {}
+        },
+        "geometry": {
+            "model": "auto",
+            "model_margin": 0.1,
+            "subpixel": true,
+            "grid_n": 4
+        },
+        "refine": {
+            "method": "phase"
+        }
+    },
+    "package_versions": {
+        "numpy": "2.2.6",
+        "scipy": "1.17.1",
+        "rasterio": "1.4.4",
+        "scikit-image": "0.26.0",
+        "matplotlib": "3.11.1",
+        "click": "8.5.0",
+        "pyyaml": "6.0.3",
+        "pytest": "9.1.1",
+        "opencv-python-headless": "5.0.0.93",
+        "samanvay": "0.1.0"
+    },
+    "inputs": {
+        "source": {
+            "path": "data/real/ch2_ch2/source.tif",
+            "size_bytes": 9539193,
+            "product_id": "ch2_tmc_ndn_20211122T2123225689_d_oth_d18",
+            "meta_source": {
+                "product_id": "sidecar",
+                "instrument": "sidecar",
+                "gsd_m": "sidecar",
+                "sun_az_deg": "sidecar",
+                "sun_el_deg": "sidecar",
+                "incidence_deg": "sidecar",
+                "emission_deg": "unknown",
+                "phase_deg": "unknown",
+                "geotransform": "geotiff",
+                "crs": "geotiff",
+                "shape": "geotiff",
+                "dtype": "geotiff",
+                "nodata": "geotiff"
+            }
+        },
+        "reference": {
+            "path": "data/real/ch2_ch2/reference.tif",
+            "size_bytes": 7460115,
+            "product_id": "ch2_tmc_ndn_20240124T0838058678_d_oth_d18",
+            "meta_source": {
+                "product_id": "sidecar",
+                "instrument": "sidecar",
+                "gsd_m": "sidecar",
+                "sun_az_deg": "sidecar",
+                "sun_el_deg": "sidecar",
+                "incidence_deg": "sidecar",
+                "emission_deg": "unknown",
+                "phase_deg": "unknown",
+                "geotransform": "geotiff",
+                "crs": "geotiff",
+                "shape": "geotiff",
+                "dtype": "geotiff",
+                "nodata": "geotiff"
+            }
+        }
+    }
+}

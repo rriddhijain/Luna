@@ -108,13 +108,36 @@ def _row(run_dir, root, link_base):
         "status": "ok" if metrics is not None else "no metrics",
         "status_detail": metrics_err,
         "model_type": m.get("model_type") or t.get("model_type"),
+        # check_rmse_px is the accuracy number: held out from the fit. rmse_px is kept
+        # beside it and labelled in-sample, never as a substitute.
+        "check_rmse_px": m.get("check_rmse_px"),
+        "check_rmse_all_px": m.get("check_rmse_all_px"),
+        "check_p90_px": m.get("check_p90_px"),
+        "check_status": m.get("check_status"),
+        "n_check": m.get("n_check"),
+        "n_control": m.get("n_control"),
         "rmse_px": m.get("rmse_px"),
         "gt_rmse_px": m.get("gt_rmse_px"),
         "inlier_count": m.get("inlier_count"),
         "match_count": m.get("match_count"),
         "inlier_ratio": m.get("inlier_ratio"),
+        "inlier_ratio_pass": m.get("inlier_ratio_pass"),
+        "inlier_ratio_target": m.get("inlier_ratio_target"),
+        "sdi": m.get("sdi"),
+        "sdi_definition": m.get("sdi_definition"),
         "coverage_pct": m.get("coverage_pct"),
         "dispersion_cv": m.get("dispersion_cv"),
+        "tps_status": m.get("tps_status"),
+        "tps_n_control": m.get("tps_n_control"),
+        "tps_check_rmse_before_px": m.get("tps_check_rmse_before_px"),
+        "tps_check_rmse_after_px": m.get("tps_check_rmse_after_px"),
+        "match_method_resolved": m.get("match_method_resolved"),
+        "match_method_reason": m.get("match_method_reason"),
+        "verify_init_source": m.get("verify_init_source"),
+        "mask_fill": m.get("mask_fill"),
+        "clahe_applied": m.get("clahe_applied"),
+        "seed_applied": m.get("seed_applied"),
+        "seed_reason": m.get("seed_reason"),
         "illum_mode": m.get("illum_mode"),
         "pc_status": m.get("pc_status"),
         "canonicalised": m.get("canonicalised"),
@@ -126,6 +149,10 @@ def _row(run_dir, root, link_base):
         "cell_counts": m.get("cell_counts"),
         "cell_states": m.get("cell_states"),
         "grid_n": m.get("grid_n"),
+        # cell_counts is shaped rows x cols, which is only grid_n x grid_n on a square
+        # source; geometry.uniformity.grid_shape keeps cells near-square otherwise.
+        "grid_rows": m.get("grid_rows"),
+        "grid_cols": m.get("grid_cols"),
         "report": _rel(run_dir / "report.html", link_base),
         "viewer": _rel(run_dir / "viewer.html", link_base),
         "timestamp_utc": p.get("timestamp_utc"),
@@ -159,6 +186,14 @@ def _fallback_line(row):
         text += " (" + esc(str(row["status_detail"])) + ")"
     if row["rmse_trustworthy"] is False:
         text += " \u2014 rmse not trustworthy: " + esc(str(row["rmse_warning"] or "flagged by the redundancy gate"))
+    # The headline accuracy figure and the plan's inlier bar, before any JS runs.
+    if row["check_rmse_px"] is not None:
+        text += " \u2014 check_rmse_px (held out) " + esc(str(row["check_rmse_px"]))
+    elif row["check_status"] not in (None, "ok"):
+        text += " \u2014 no held-out rmse: check_status=" + esc(str(row["check_status"]))
+    if row["inlier_ratio_pass"] is not None:
+        text += " \u2014 inlier ratio " + ("PASS" if row["inlier_ratio_pass"] else "FAIL") + \
+                " (" + esc(str(row["inlier_ratio"])) + " vs " + esc(str(row["inlier_ratio_target"])) + ")"
     return "<li>" + text + "</li>"
 
 
@@ -400,9 +435,12 @@ tr.detail td{background:#0d1117;padding:16px 20px}
 <script>
 var D = JSON.parse(document.getElementById("dash-data").textContent);
 var COLS = [
-  ["name","run",0],["status","state",0],["model_type","model",0],["rmse_px","rmse px",1],
+  ["name","run",0],["status","state",0],["model_type","model",0],
+  ["check_rmse_px","check rmse px (held out)",1],["rmse_px","rmse px (in-sample)",1],
   ["gt_rmse_px","gt rmse px",1],["inlier_count","inliers",1],["inlier_ratio","inlier ratio",1],
-  ["coverage_pct","coverage %",1],["dispersion_cv","disp cv",1],["illum_mode","illum",0],
+  ["inlier_ratio_pass","ratio vs plan",0],["sdi","sdi",1],
+  ["coverage_pct","coverage %",1],["dispersion_cv","disp cv",1],["tps_status","tps",0],
+  ["match_method_resolved","arm",0],["illum_mode","illum",0],
   ["pc_status","pc",0],["canonicalised","canon",0],["runtime_s","runtime s",1]
 ];
 var STATES = {populated:"s-populated", insufficient_texture:"s-insufficient_texture",
@@ -430,21 +468,26 @@ function el(tag, cls, text){
   if (text !== undefined && text !== null) e.textContent = text;
   return e;
 }
-function grid(counts, states, n){
+function grid(counts, states, n, gr, gc){
   var box = el("div");
-  if (!counts || !n){ box.appendChild(el("div","kv","no uniformity grid reported")); return box; }
-  if (counts.length !== n*n){
-    box.appendChild(el("div","kv","cell_counts has "+counts.length+" cells, grid_n="+n+" needs "+(n*n)));
+  if (!counts || (!n && !gc)){ box.appendChild(el("div","kv","no uniformity grid reported")); return box; }
+  // The grid is rows x cols, not n x n: a non-square source gets near-square cells from
+  // geometry.uniformity.grid_shape, so 400x1200 at grid_n=4 is 4 rows by 12 columns.
+  // grid_n is only the fallback for a run written before grid_rows/grid_cols existed.
+  var rows = gr ? gr : n, cols = gc ? gc : n;
+  if (counts.length !== rows*cols){
+    box.appendChild(el("div","kv","cell_counts has "+counts.length+" cells, grid is "+
+                    rows+"x"+cols+" which needs "+(rows*cols)));
     return box;
   }
   var max = 1;
   for (var j=0;j<counts.length;j++) if (typeof counts[j] === "number" && counts[j] > max) max = counts[j];
-  var g = el("div","ugrid"); g.style.gridTemplateColumns = "repeat("+n+",1fr)";
-  for (var i=0;i<n*n;i++){
+  var g = el("div","ugrid"); g.style.gridTemplateColumns = "repeat("+cols+",1fr)";
+  for (var i=0;i<rows*cols;i++){
     var st = (states && states[i]) ? String(states[i]) : "unknown";
     var c = el("div","cell "+(STATES[st] || "s-unknown"));
     var cnt = counts[i];
-    c.title = "cell "+i+" (col "+(i%n)+", row "+Math.floor(i/n)+") · "+st+" · count "+
+    c.title = "cell "+i+" (col "+(i%cols)+", row "+Math.floor(i/cols)+") · "+st+" · count "+
               (cnt === null || cnt === undefined ? "unknown" : cnt);
     if (st === "populated"){
       c.textContent = (cnt === null || cnt === undefined) ? "?" : cnt;
@@ -496,7 +539,37 @@ function detail(row){
   var p1 = el("div","panel"); p1.appendChild(el("div","ptitle","stage runtime"));
   p1.appendChild(stages(row.stage_s)); panels.appendChild(p1);
   var p2 = el("div","panel"); p2.appendChild(el("div","ptitle","tie-point uniformity"));
-  p2.appendChild(grid(row.cell_counts, row.cell_states, row.grid_n)); panels.appendChild(p2);
+  p2.appendChild(grid(row.cell_counts, row.cell_states, row.grid_n, row.grid_rows, row.grid_cols));
+  p2.appendChild(el("div","kv", row.sdi_definition || "sdi_definition not reported"));
+  panels.appendChild(p2);
+  var pA = el("div","panel"); pA.appendChild(el("div","ptitle","held-out accuracy"));
+  var akv = el("div","kv");
+  [["check_rmse_px (held out)", row.check_rmse_px],
+   ["check_rmse_all_px", row.check_rmse_all_px],["check_p90_px", row.check_p90_px],
+   ["n_check / n_control", (row.n_check === null || row.n_check === undefined ? "—" : row.n_check) +
+                           " / " + (row.n_control === null || row.n_control === undefined ? "—" : row.n_control)],
+   ["check_status", row.check_status],
+   ["rmse_px (IN-SAMPLE, not accuracy)", row.rmse_px],
+   ["inlier ratio vs plan", (row.inlier_ratio_pass === null || row.inlier_ratio_pass === undefined
+      ? "unknown" : (row.inlier_ratio_pass ? "PASS" : "FAIL")) + " (" +
+      (row.inlier_ratio === null || row.inlier_ratio === undefined ? "—" : row.inlier_ratio) +
+      " vs " + (row.inlier_ratio_target === null || row.inlier_ratio_target === undefined
+                ? "—" : row.inlier_ratio_target) + ")"],
+   ["tps_status", row.tps_status],["tps_n_control", row.tps_n_control],
+   ["tps check rmse before", row.tps_check_rmse_before_px],
+   ["tps check rmse after", row.tps_check_rmse_after_px],
+   ["match_method_resolved", row.match_method_resolved],
+   ["match_method_reason", row.match_method_reason],
+   ["verify_init_source", row.verify_init_source],["mask_fill", row.mask_fill],
+   ["clahe_applied", row.clahe_applied],["seed_applied", row.seed_applied],
+   ["seed_reason", row.seed_reason]].forEach(function(pair){
+    var line = el("div");
+    line.appendChild(el("b", null, pair[0] + ": "));
+    line.appendChild(document.createTextNode(pair[1] === null || pair[1] === undefined
+        ? "not reported" : String(pair[1])));
+    akv.appendChild(line);
+  });
+  pA.appendChild(akv); panels.appendChild(pA);
   var p3 = el("div","panel"); p3.appendChild(el("div","ptitle","run"));
   var kv = el("div","kv");
   [["matches", row.match_count],["verify", row.verify_status],["run at", row.timestamp_utc],
@@ -552,6 +625,18 @@ function render(){
         var td2 = el("td");
         td2.appendChild(el("span","state "+(row.status === "ok" ? "ok" : "bad"), row.status));
         tr.appendChild(td2);
+      } else if (c[0] === "inlier_ratio_pass"){
+        // The plan's >85% bar. A miss is shown as a miss, in the failure colour.
+        var td4 = el("td");
+        if (row.inlier_ratio_pass === null || row.inlier_ratio_pass === undefined){
+          td4.className = "none"; td4.textContent = "—";
+          td4.title = "inlier_ratio_pass not reported by this run";
+        } else {
+          td4.appendChild(el("span","state "+(row.inlier_ratio_pass ? "ok" : "bad"),
+                             row.inlier_ratio_pass ? "PASS" : "FAIL"));
+          td4.title = "inlier_ratio " + row.inlier_ratio + " vs target " + row.inlier_ratio_target;
+        }
+        tr.appendChild(td4);
       } else {
         var td3 = cell(row, c[0], c[2]);
         if (c[0] === "rmse_px" && row.rmse_trustworthy === false){

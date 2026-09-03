@@ -89,8 +89,16 @@ def phase_congruency(img, nscale=4, norient=6, min_wavelength=3.0, mult=2.1,
     for o in range(norient):
         angl = o * np.pi / norient
         # Angular spread; recomputed once per orientation, never per scale.
-        dtheta = np.abs(np.arctan2(sintheta * np.cos(angl) - costheta * np.sin(angl),
-                                   costheta * np.cos(angl) + sintheta * np.sin(angl)))
+        # float(), and it is load-bearing. np.cos/np.sin of a Python float return float64
+        # SCALARS, and under NumPy 2's NEP 50 those are strong: they upcast the float32
+        # polar grids, so `spread` becomes float64, `lg * spread` becomes float64, and
+        # `spectrum * (...)` becomes COMPLEX128 — every one of the nscale `eo` arrays is
+        # then twice its intended size. Measured on a fresh process per run, stock vs this
+        # one-line fix: 4096^2 16.25 s / 4.57 GB -> 9.09 s / 3.03 GB; 6144^2 83.02 s ->
+        # 19.72 s. pc.dtype is float32 either way, so nothing downstream changes.
+        cos_a, sin_a = float(np.cos(angl)), float(np.sin(angl))
+        dtheta = np.abs(np.arctan2(sintheta * cos_a - costheta * sin_a,
+                                   costheta * cos_a + sintheta * sin_a))
         spread = (np.cos(np.minimum(dtheta * norient / 2.0, np.pi)) + 1.0) / 2.0
 
         # O(nscale) arrays live at once, never O(nscale * norient).

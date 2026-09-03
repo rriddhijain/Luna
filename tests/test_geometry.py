@@ -312,3 +312,276 @@ def test_a_well_supported_fit_is_marked_trustworthy():
     assert reg.model_type != "failed"
     assert reg.metrics["redundancy"] >= 3
     assert reg.metrics["rmse_trustworthy"] is True
+
+
+# --- P1.4: the control/check split -------------------------------------------------
+# The split is the one thing standing between "our RMSE is 0.4 px" and a number the fit
+# produced about itself. These tests pin the three properties that make it mean anything:
+# it is reproducible, the fit genuinely never sees a check point, and turning it off
+# leaves the pre-split engine untouched.
+
+
+def _split_set(n=300, seed=7):
+    matches, gt_H = generate_fake_matches(num_points=n, noise_std=0.5,
+                                          outlier_fraction=0.2, seed=seed)
+    return matches, gt_H
+
+
+def test_split_is_reproducible_and_independent_of_match_order():
+    matches, _ = _split_set()
+    a = verify_matches(matches, {})
+    b = verify_matches(matches, {})
+    assert a.metrics["check_status"] == "ok"
+    assert np.array_equal(a.roles, b.roles)                  # byte for byte on a rerun
+
+    # The hash is over coordinates, not positions in the array, so shuffling the match
+    # order must hold out the SAME points. A seeded RNG would fail this outright.
+    perm = np.random.default_rng(0).permutation(len(matches.src_xy))
+    shuffled = MatchSet(src_xy=matches.src_xy[perm], ref_xy=matches.ref_xy[perm],
+                        score=matches.score[perm], method=matches.method[perm],
+                        cell=matches.cell[perm])
+    c = verify_matches(shuffled, {})
+    held_a = {tuple(p) for p in matches.src_xy[a.roles == 1]}
+    held_c = {tuple(p) for p in shuffled.src_xy[c.roles == 1]}
+    assert held_a == held_c and len(held_a) == a.metrics["n_check"]
+
+
+def test_split_is_stratified_over_the_grid():
+    matches, _ = _split_set()
+    reg = verify_matches(matches, {})
+    cells = np.asarray(matches.cell)
+    populated = {int(c) for c in np.unique(cells) if (cells == c).sum() >= 5}
+    held = {int(c) for c in np.unique(cells[reg.roles == 1])}
+    # Every cell with points to spare contributes: a check set sitting in one corner
+    # would measure that corner, not the frame.
+    assert populated and held >= populated
+
+
+def test_the_fit_never_sees_a_check_point():
+    """The fitted transform must be bit-identical to one fitted on the control set alone."""
+    matches, _ = _split_set()
+    # The spline is off on both sides on purpose: this test is about the split, and a
+    # model_type that gained "+tps" on one side only would fail it for another reason.
+    reg = verify_matches(matches, {"tps": False})
+    control = reg.roles == 0
+    only_control = MatchSet(src_xy=matches.src_xy[control], ref_xy=matches.ref_xy[control],
+                            score=matches.score[control], method=matches.method[control],
+                            cell=matches.cell[control])
+    alone = verify_matches(only_control, {"check_fraction": 0.0, "tps": False})
+    assert np.array_equal(reg.params, alone.params)
+    assert reg.model_type == alone.model_type
+    assert reg.metrics["n_control"] == int(control.sum())
+    assert reg.metrics["n_check"] == int((reg.roles == 1).sum())
+    assert reg.metrics["n_control"] + reg.metrics["n_check"] == len(matches.src_xy)
+
+
+def test_check_fraction_zero_reproduces_the_pre_split_engine():
+    """Measured against the pre-split module (commit c7c0f17) on the same fixtures.
+
+    The split is the largest change this file has taken; with it off, nothing may move.
+    The literals below are that module's output, not this one's.
+    """
+    expected = {7: 0.5529969723107404, 11: 0.608840457186335, 19: 0.5795066457687573}
+    for seed, rmse in expected.items():
+        matches, _ = _split_set(seed=seed)
+        reg = verify_matches(matches, {"check_fraction": 0.0})
+        assert reg.metrics["rmse_px"] == rmse
+        assert reg.metrics["check_status"] == "disabled"
+        assert reg.metrics["check_rmse_px"] is None      # unknown, never 0.0
+        assert reg.roles is None and reg.warp is None
+        assert reg.model_type == "similarity"
+
+
+def test_check_metrics_are_null_when_the_split_would_starve_the_fit():
+    rng = np.random.default_rng(31)
+    src = rng.uniform(0.0, 500.0, size=(12, 2))
+    reg = verify_matches(_matchset(src, 1.5 * src + 4.0), {})
+    assert reg.metrics["check_status"] == "skipped_too_few_matches"
+    assert reg.metrics["n_check"] == 0
+    assert reg.roles is None
+    for key in ("check_rmse_px", "check_rmse_all_px", "check_p90_px",
+                "check_outlier_frac"):
+        assert reg.metrics[key] is None
+
+
+def test_a_good_check_point_counts_toward_the_delivered_inliers():
+    matches, _ = _split_set()
+    reg = verify_matches(matches, {})
+    check = reg.roles == 1
+    mag = np.hypot(reg.residuals[:, 0], reg.residuals[:, 1])
+    thresh = reg.metrics["ransac_thresh_px"]
+    # Coverage and dispersion measure the tie-points we hand over, so a held-out point
+    # that lands inside the threshold is delivered and must be an inlier.
+    assert np.array_equal(reg.inliers[check], mag[check] <= thresh)
+    assert reg.metrics["n_check_inlier"] == int((check & (mag <= thresh)).sum())
+    assert reg.metrics["inlier_count"] == int(reg.inliers.sum())
+    assert reg.metrics["check_outlier_frac"] == pytest.approx(
+        1.0 - reg.metrics["n_check_inlier"] / reg.metrics["n_check"])
+    # check_rmse_px is over the check inliers only; check_rmse_all_px keeps the outliers.
+    assert reg.metrics["check_rmse_px"] <= reg.metrics["check_rmse_all_px"]
+    assert reg.metrics["check_p90_px"] > 0.0
+
+
+def test_roles_cover_every_match_including_the_ones_the_init_gate_dropped():
+    matches, gt_H = _split_set()
+    reg = verify_matches(matches, {"init_gate_px": 20.0}, init=gt_H)
+    assert reg.metrics["init_gated_out"] > 0
+    assert reg.roles.shape == (len(matches.src_xy),)
+    assert set(np.unique(reg.roles)) <= {0, 1}
+    # A point the gate dropped was never held out from anything, so it is control: the
+    # check count is exactly the number of role-1 points, gated points included nowhere.
+    assert int((reg.roles == 1).sum()) == reg.metrics["n_check"]
+    assert reg.metrics["n_control"] + reg.metrics["n_check"] <= len(matches.src_xy)
+
+
+# --- the spline, and the hold-out test that makes it safe ---------------------------
+
+
+def _relief_matches(n=400, amplitude=6.0, noise=0.1, seed=101):
+    """A projective pair plus a smooth bulge no homography can absorb — synthetic relief."""
+    rng = np.random.default_rng(seed)
+    src = rng.uniform(0.0, 1000.0, size=(n, 2))
+    H = np.array([[1.2, 0.0, 15.0], [0.0, 1.2, -8.0], [0.0, 0.0, 1.0]])
+    bump = np.exp(-((src - 500.0) ** 2).sum(axis=1) / (2.0 * 250.0 ** 2))
+    src_deformed = src + np.stack([amplitude * bump, -0.66 * amplitude * bump], axis=1)
+    ref = apply_transform(H, src_deformed) + rng.normal(0.0, noise, size=(n, 2))
+    cell = ((src[:, 0] // 250).astype(np.int32) + 4 * (src[:, 1] // 250).astype(np.int32))
+    return MatchSet(src_xy=src, ref_xy=ref, score=np.ones(n, dtype=np.float32),
+                    method=np.zeros(n, dtype=np.uint8), cell=cell)
+
+
+def test_tps_is_rejected_when_it_does_not_improve_held_out_error():
+    """Pure similarity plus noise: there is no relief to absorb, so the spline must go.
+
+    Swept over the contamination of the check set, because that is what decides whether
+    check_rmse_all_px can see the spline at all — un-thresholded, it is mostly a
+    measurement of the gross mismatches. On check_rmse_all_px alone the verdict here is
+    0/15, 4/15 and 7/15 wrong at 0%, 5% and 20% outliers; on the shipped pair of
+    conditions it is 0/15 at all three.
+    """
+    for outlier_fraction in (0.0, 0.05, 0.2):
+        for seed in (3, 7, 11):
+            matches, _ = generate_fake_matches(num_points=300, noise_std=0.5,
+                                               outlier_fraction=outlier_fraction,
+                                               seed=seed)
+            reg = verify_matches(matches, {})
+            assert reg.metrics["check_status"] == "ok"
+            assert reg.metrics["tps_status"] == "rejected_no_improvement"
+            assert reg.metrics["tps_applied"] is False
+            assert reg.warp is None and "+tps" not in reg.model_type
+            # Both numbers that fed the decision are recorded, and both are held out.
+            assert reg.metrics["tps_check_rmse_before_px"] is not None
+            assert reg.metrics["tps_check_rmse_after_px"] is not None
+
+            # And rejecting it must leave the registration exactly where it was.
+            off = verify_matches(matches, {"tps": False})
+            assert reg.metrics["rmse_px"] == off.metrics["rmse_px"]
+            assert reg.metrics["check_rmse_all_px"] == off.metrics["check_rmse_all_px"]
+
+
+def test_an_overfit_spline_cannot_talk_rmse_below_the_injected_noise():
+    """The failure the second acceptance condition exists to stop.
+
+    On seed 7 with 20% outliers, check_rmse_all_px is 268.66 px and an overfit spline
+    "improves" it by 0.013% — noise on the gross mismatches, not evidence about the
+    model. Accepting on that alone drops in-sample rmse_px from 0.5530 to 0.4670, i.e.
+    21% BELOW the sqrt(2)*0.5/1.2 = 0.589 px of noise actually injected, which is a fit
+    reporting an accuracy the data cannot contain. The spline must be rejected and
+    rmse_px must stay at the noise floor.
+    """
+    matches, gt_H = _split_set(seed=7)
+    reg = verify_matches(matches, {})
+    injected = np.sqrt(2.0) * 0.5 / np.sqrt(abs(np.linalg.det(gt_H[:2, :2])))
+    assert reg.metrics["check_rmse_all_px"] > 100.0     # outlier-dominated, as designed
+    assert reg.warp is None
+    assert reg.metrics["rmse_px"] == pytest.approx(injected, rel=0.2)
+
+
+def test_tps_is_applied_only_when_it_improves_points_it_never_saw():
+    matches = _relief_matches()
+    off = verify_matches(matches, {"tps": False})
+    on = verify_matches(matches, {})
+
+    assert off.metrics["tps_status"] == "disabled" and off.warp is None
+    assert on.metrics["tps_status"] == "applied"
+    assert on.model_type == off.model_type + "+tps"
+    assert on.warp is not None and on.warp.n_control == on.metrics["tps_n_control"]
+
+    # The decision is recorded with the two numbers that made it, both on held-out points.
+    before = on.metrics["tps_check_rmse_before_px"]
+    after = on.metrics["tps_check_rmse_after_px"]
+    assert after < before
+    assert before == pytest.approx(off.metrics["check_rmse_all_px"], rel=1e-9)
+    assert on.metrics["check_rmse_all_px"] == pytest.approx(after, rel=1e-9)
+    # 6 px of relief: the spline takes the held-out error from ~1.7 px to ~0.18 px.
+    assert before > 1.0 and after < 0.5
+
+    # Residuals must be the DELIVERED model's, not the global part of it — writers.py
+    # and metrics.py both quote them.
+    from samanvay.geometry.tps import pullback
+    full = pullback(on.params, matches.ref_xy, on.warp) - matches.src_xy
+    assert np.allclose(on.residuals, full, atol=1e-12)
+
+
+def test_tps_needs_control_points_and_says_so_when_it_has_too_few():
+    rng = np.random.default_rng(37)
+    src = rng.uniform(0.0, 500.0, size=(20, 2))
+    reg = verify_matches(_matchset(src, 1.4 * src + 3.0), {"tps_min_control": 25})
+    assert reg.metrics["tps_status"] == "too_few_control"
+    assert reg.metrics["tps_applied"] is False and reg.warp is None
+    assert reg.metrics["tps_check_rmse_before_px"] is None
+
+
+def test_tps_false_never_fits_a_spline():
+    reg = verify_matches(_relief_matches(), {"tps": False})
+    assert reg.metrics["tps_status"] == "disabled"
+    assert reg.metrics["tps_check_rmse_before_px"] is None
+    assert reg.warp is None
+
+
+# --- the spline itself --------------------------------------------------------------
+
+
+def test_tps_reproduces_a_known_displacement_field_and_round_trips():
+    from samanvay.geometry.tps import ThinPlateSpline, fit_tps, pullback
+
+    rng = np.random.default_rng(5)
+    node = rng.uniform(0.0, 100.0, size=(60, 2))
+    # A bump, not a linear ramp: an affine field is reproduced by the spline's affine
+    # part alone and would say nothing about the kernel or about lam.
+    bump = np.exp(-((node - 50.0) ** 2).sum(axis=1) / (2.0 * 25.0 ** 2))
+    field = np.stack([2.0 * bump, -1.5 * bump], axis=1)
+    warp = fit_tps(node + field, node, lam=0.0)
+    assert warp is not None and warp.n_control == 60
+    assert np.allclose(warp.displacement(node), field, atol=1e-6)
+    assert np.allclose(warp.apply(node), node + field, atol=1e-6)
+
+    back = ThinPlateSpline.from_dict(warp.to_dict())
+    assert np.allclose(back.displacement(node), warp.displacement(node), atol=1e-12)
+    assert warp.to_dict()["type"] == "thin_plate_spline"
+
+    # lam stiffens: at lam=0 the spline interpolates its control points exactly, at
+    # lam=50 it is pulled towards the affine part and no longer passes through them.
+    stiff = fit_tps(node + field, node, lam=50.0)
+    assert (np.abs(stiff.displacement(node) - field).max()
+            > 100.0 * np.abs(warp.displacement(node) - field).max())
+    assert stiff.lam == 50.0 and warp.lam == 0.0
+
+    # pullback with no warp is exactly inv(H) @ ref; with one it adds the displacement.
+    H = np.array([[2.0, 0.0, 10.0], [0.0, 2.0, -5.0], [0.0, 0.0, 1.0]])
+    ref = apply_transform(H, node)
+    assert np.allclose(pullback(H, ref), node, atol=1e-9)
+    assert np.allclose(pullback(H, ref, warp), node + field, atol=1e-6)
+    assert pullback(np.zeros((3, 3)), ref) is None            # singular, not an exception
+
+
+def test_fit_tps_returns_none_instead_of_raising():
+    from samanvay.geometry.tps import fit_tps
+
+    assert fit_tps(np.zeros((3, 2)), np.zeros((3, 2))) is None        # too few points
+    assert fit_tps(np.zeros((5, 2)), np.zeros((4, 2))) is None        # length mismatch
+    assert fit_tps(np.zeros((8, 2)), np.zeros((8, 2))) is None        # all in one place
+    bad = np.tile([[1.0, 2.0]], (8, 1)).copy()
+    bad[0] = np.nan
+    assert fit_tps(bad, np.arange(16, dtype=float).reshape(8, 2)) is None
+    assert fit_tps("not points", "either") is None

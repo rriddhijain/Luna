@@ -1,0 +1,17 @@
+# Real LROC NAC pairs over Apollo 16, downloaded by scripts/download_pairs.py and cut into
+# overlapping tiles by delta sun azimuth. Same site, same 2 m GSD, same instrument in both
+# halves of every pair, so the only variable across the three is illumination — the real-data
+# counterpart of fixtures/dsun_sweep. There is NO ground truth for these: gt_rmse_px is null
+# and check_rmse_px (held-out tie-points) is the accuracy number.
+#
+#   python -m bench.harness sweep --manifest bench/real_pairs.yaml --out runs/bench_real
+pairs:
+  - name: apollo16_dsun004
+    source: data/real/apollo16/pairs/dsun004/source.tif
+    reference: data/real/apollo16/pairs/dsun004/reference.tif
+  - name: apollo16_dsun085
+    source: data/real/apollo16/pairs/dsun085/source.tif
+    reference: data/real/apollo16/pairs/dsun085/reference.tif
+  - name: apollo16_dsun115
+    source: data/real/apollo16/pairs/dsun115/source.tif
+    reference: data/real/apollo16/pairs/dsun115/reference.tif

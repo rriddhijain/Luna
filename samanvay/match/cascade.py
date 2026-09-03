@@ -38,7 +38,11 @@ pushing a garbage transform downward where it becomes a tight search window cent
 the wrong place — which fails silently and looks like a confident answer. A level that
 fails *before any level has succeeded* is SKIPPED instead: there is no fitted transform
 to propagate, so the next finer level runs on the same coarse init direct matching would
-have used, and the cascade is never worse than not cascading. `status` per level is
+have used. The seeding bar is therefore applied only while a finer level still exists
+(`k > 0`); at the finest level the matches ARE the result and the bar is not applied.
+Without that exception the cascade was strictly WORSE than not cascading whenever the
+size cap forced K = 1 — measured on an 80x OHRC-class pair: 0 matches with the cascade,
+a fitted similarity at gt_rmse_px 0.543 with it disabled. `status` per level is
 "ok" / "skipped" / "rejected", and only "rejected" halts.
 
 `chain_registrations` composes IIRS→WAC→NAC style hops into one source→final transform
@@ -214,6 +218,12 @@ def match_cascade(source: CanonicalImage, reference: CanonicalImage,
 
     Matches come back at full SOURCE resolution. `info["source_decimation"]` is the
     decimation the finest successful level still ran at — the honest precision ceiling.
+
+    `info["cell_info"]` is match_tiled's per-cell state for the level whose matches are
+    returned (`info["cell_info_level"]`): the per-cell `anms` flag, the ratio threshold
+    each cell relaxed to, and why a cell found nothing. It is diagnostic only — the
+    coverage numbers in metrics.json come from uniformity_report, which recomputes cell
+    ids from `src_xy` and never reads this. None when no level succeeded.
     """
     cfg = dict(config or {})
     casc = dict(cfg.pop("cascade", None) or {})
@@ -255,6 +265,13 @@ def match_cascade(source: CanonicalImage, reference: CanonicalImage,
         "transform": None,
         "match_count": 0,
         "inlier_count": 0,
+        # The per-cell coverage state of the level whose matches are returned. Levels do
+        # not merge — each successful level REPLACES the previous one's points — so the
+        # finest successful level is the only one whose cells describe the delivered
+        # tie-points, and it is the one surfaced here. Null while no level has succeeded:
+        # cells from a rejected level describe points that were thrown away.
+        "cell_info": None,
+        "cell_info_level": None,
     }
 
     if min(src_shape) < 1 or min(ref_shape) < 1:
@@ -297,7 +314,8 @@ def match_cascade(source: CanonicalImage, reference: CanonicalImage,
         info["levels_source"] = "scale_ratio"
     info["levels"] = int(K)
 
-    best_matches, best_H, best_level = None, None, None
+    best_matches, best_H, best_level, best_cells = None, None, None, None
+    best_shapes = None
 
     for k in range(K - 1, -1, -1):
         step = 2.0 ** k
@@ -328,6 +346,11 @@ def match_cascade(source: CanonicalImage, reference: CanonicalImage,
             "inlier_count": 0,
             "rmse_px": float("nan"),
             "rmse_trustworthy": False,
+            # What match_tiled actually detected with at this level. It is not always
+            # what the config asked for: the rift/l2 arm falls back to the intensity
+            # arm on a level whose phase congruency came back empty, and a level that
+            # silently changed arms is exactly what a scale-dependent failure looks like.
+            "method": None,
             "model": None,
             "status": "failed",
             "reason": "",
@@ -338,10 +361,14 @@ def match_cascade(source: CanonicalImage, reference: CanonicalImage,
         lvl_cfg = dict(cfg)
         if margin is not None:
             lvl_cfg["search_margin_px"] = margin
-        matches, _cells = match_tiled(src_l, ref_l, grid_n=grid_n, halo_px=halo_px,
-                                      config=lvl_cfg, cell_budgets=cell_budgets,
-                                      init=init_l)
+        # Quotas, the per-cell grid and the ANMS gate are all match_tiled's: the cascade
+        # decimates and seeds, it never selects points itself, so `lvl_cfg` carrying
+        # `anms` and `method` through untouched is the whole of the wiring for both.
+        matches, cells = match_tiled(src_l, ref_l, grid_n=grid_n, halo_px=halo_px,
+                                     config=lvl_cfg, cell_budgets=cell_budgets,
+                                     init=init_l)
         lvl["match_count"] = int(len(matches.src_xy))
+        lvl["method"] = cells.get("method")
         reg = verify_matches(matches, geom_cfg, init=init_l)
         lvl["model"] = reg.model_type
         lvl["inlier_count"] = int(reg.metrics.get("inlier_count", 0) or 0)
@@ -351,7 +378,16 @@ def match_cascade(source: CanonicalImage, reference: CanonicalImage,
         H_lvl = _valid_H(reg.params) if reg.metrics.get("status") == "ok" else None
         if H_lvl is None:
             lvl["reason"] = str(reg.metrics.get("reason") or "no model fitted at this level")
-        elif lvl["inlier_count"] < min_seed:
+        elif lvl["inlier_count"] < min_seed and k > 0:
+            # `k > 0` is the whole point of the bar: it exists to stop a weak fit being
+            # propagated DOWNWARD as a tight search window centred on the wrong place.
+            # At k == 0 there is no finer level to protect — these matches are the
+            # deliverable, not a seed — so applying it there throws away the answer.
+            # Measured on an 80x OHRC-class pair, where the size cap forces K = 1 and the
+            # only level is k = 0: with the bar applied the run returned 0 matches, while
+            # the identical pair with the cascade disabled fitted a similarity at
+            # gt_rmse_px 0.543. That made the cascade strictly worse than not cascading in
+            # exactly the OHRC/IIRS regime it is advertised for.
             lvl["reason"] = ("%d inliers, below the seeding bar of %d"
                              % (lvl["inlier_count"], min_seed))
             H_lvl = None
@@ -384,6 +420,8 @@ def match_cascade(source: CanonicalImage, reference: CanonicalImage,
         lvl["status"] = "ok"
         lvl["transform"] = H_full.copy()          # what seeds the next finer level
         best_matches, best_H, best_level = _lift(matches, Ss_inv, Sr_inv), H_full, k
+        best_cells = cells
+        best_shapes = (lvl["src_shape"], lvl["ref_shape"])
         info["match_count"] = lvl["match_count"]
         info["inlier_count"] = lvl["inlier_count"]
 
@@ -398,6 +436,33 @@ def match_cascade(source: CanonicalImage, reference: CanonicalImage,
     info["final_level"] = int(best_level)
     info["transform"] = best_H
     info["source_decimation"] = float(base_src * 2.0 ** best_level)
+
+    # The returned matches carry that level's cell ids, so its cell_info is the one
+    # that describes them. Its boxes are in LEVEL pixels — the cell partition was cut on
+    # the decimated source — so the frame is published with them. The ids need no
+    # conversion — `matches.cell` was assigned by this same call — but
+    # `grid_rows`/`grid_cols` are this level's own, so read the grid shape from cell_info
+    # rather than recomputing it at full resolution.
+    #
+    # `src_shape`/`ref_shape` are the frame, NOT `src_decimation`: _level_shape rounds,
+    # so the nominal factor is not the achieved one. Measured on
+    # fixtures/dsun_sweep/dsun_50, level 1: an 858 px source at a nominal decimation of
+    # 4.0 becomes 214 px, a true factor of 4.0093, and scaling that level's src_core by
+    # 4.0 lands 2 px short of the image edge. The decimations stay because they are what
+    # level_info reports and what the precision ceiling is quoted in; the exact
+    # conversion is full_source_shape / src_shape.
+    if best_cells is not None:
+        best_cells["level"] = int(best_level)
+        best_cells["src_decimation"] = float(base_src * 2.0 ** best_level)
+        best_cells["ref_decimation"] = float(base_ref * 2.0 ** best_level)
+        best_cells["src_shape"], best_cells["ref_shape"] = best_shapes
+        best_cells["coords_frame"] = ("level pixels: src_core is in the src_shape frame, "
+                                      "ref_window in the ref_shape frame; scale by "
+                                      "full_shape/src_shape (resp. ref) to reach full "
+                                      "resolution, not by src_decimation")
+        info["cell_info"] = best_cells
+        info["cell_info_level"] = int(best_level)
+
     if info["status"] == "stopped":
         info["stop_reason"] = info["stop_reason"] or "descent halted above the finest level"
     return best_matches, info

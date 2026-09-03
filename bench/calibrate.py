@@ -6,9 +6,12 @@ somebody's reasoning and start being an experiment.
 **Constant 1 — `_NEFF_K` in `samanvay/geometry/refine.py`.** It turns correlation peak
 sharpness into a per-point sigma, and `mean_sigma_px` is quoted from it. Two arms:
 
-* *fit arm* — the six `fixtures/dsun_sweep` pairs refined against the analytic ground
-  truth homography in `gt.json`. Real geometry (2x scale, rotation), real cross-sun
-  decorrelation, quantised DN. This is the deployed regime, so it sets the constant.
+* *fit arm* — every `fixtures/dsun_sweep` pair, refined against the analytic ground truth
+  homography in `gt.json`. Real geometry (2x scale, rotation), real cross-sun decorrelation,
+  quantised DN. This is the deployed regime, so it sets the constant. **The shipped `_NEFF_K`
+  was fitted on the six-pair sweep (Δ0-50).** The sweep now renders 14 pairs out to Δ180
+  (`synth/sweep.py`), so a re-run fits over a harder set and will not reproduce the shipped
+  number; re-fit deliberately, not by accident.
 * *regime arm* — synthetic patch pairs over lunar terrain from `synth/terrain.py`
   (3 textures x blur x noise), displaced by an exact Fourier shift so the truth carries
   no interpolation error of its own. This maps where the model holds and where it does not.

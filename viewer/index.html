@@ -35,6 +35,8 @@ h1{font-size:18px;font-weight:600}
 .card.none .v{color:var(--muted)}
 .card.warnflag{border-color:var(--amber)}
 .card.warnflag .v{color:var(--amber)}
+.card.failflag{border-color:var(--outlier)}
+.card.failflag .v{color:var(--outlier)}
 .warn{border-left:3px solid var(--amber);background:rgba(255,179,0,.08);padding:8px 12px;border-radius:4px;
       color:var(--amber);font-size:12px;line-height:1.5}
 .err{border-left:3px solid var(--outlier);background:rgba(255,83,112,.08);padding:8px 12px;border-radius:4px;
@@ -67,6 +69,7 @@ input[type=range]{width:100%;accent-color:var(--cyan)}
 .legend i{display:inline-block;width:11px;height:11px;border-radius:2px;vertical-align:-2px;margin-right:5px;
       border:1px solid var(--border)}
 .stage-wrap,.grid-wrap{min-height:10px}
+.grid-wrap{overflow-x:auto}
 .main{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;
       display:grid;grid-template-rows:44px 1fr;min-height:0}
 .bar{background:rgba(0,0,0,.25);border-bottom:1px solid var(--border);display:flex;align-items:center;

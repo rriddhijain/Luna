@@ -1,0 +1,1069 @@
+{
+    "rmse_px": 1.0898984809087662,
+    "inlier_count": 61,
+    "inlier_ratio": 0.6421052631578947,
+    "inlier_ratio_pass": false,
+    "inlier_ratio_target": 0.85,
+    "coverage_pct": 93.75,
+    "dispersion_cv": 0.3734683852424432,
+    "sdi": 0.6825785071379808,
+    "sdi_definition": "sdi = (coverage_pct/100) * 1/(1 + dispersion_cv)",
+    "grid_n": 4,
+    "grid_rows": 4,
+    "grid_cols": 4,
+    "runtime_s": 20.58,
+    "match_count": 95,
+    "mean_sigma_px": 0.5042270606025784,
+    "sigma_known_count": 70,
+    "refined_count": 70,
+    "model_type": "homography+tps",
+    "model_margin": 0.1,
+    "cell_counts": [
+        3,
+        3,
+        4,
+        4,
+        5,
+        4,
+        0,
+        5,
+        4,
+        4,
+        6,
+        2,
+        4,
+        4,
+        6,
+        3
+    ],
+    "cell_states": [
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "insufficient_texture",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated",
+        "populated"
+    ],
+    "gt_rmse_px": 1.5470708525225039,
+    "gt_bias_x": 0.23868329321346254,
+    "gt_bias_y": 0.9728258147962733,
+    "gt_p90_px": 2.1012815822566617,
+    "check_rmse_px": 1.6983236864684474,
+    "check_rmse_all_px": 7.444696102497387,
+    "check_p90_px": 12.936062076683582,
+    "check_outlier_frac": 0.4375,
+    "check_fraction": 0.2,
+    "tps_check_rmse_before_px": 7.626104211776601,
+    "tps_check_rmse_after_px": 7.444696102497387,
+    "n_check": 16,
+    "n_control": 76,
+    "n_check_inlier": 9,
+    "tps_n_control": 52,
+    "check_status": "ok",
+    "tps_status": "applied",
+    "tps_applied": true,
+    "stage_s": {
+        "load": 0.025,
+        "coarse_init": 0.0,
+        "canonicalise": 2.289,
+        "match": 18.198,
+        "verify": 0.002,
+        "refine": 0.064,
+        "metrics": 0.002,
+        "warp": 0.469
+    },
+    "delta_sun_az_deg": 40.0,
+    "match_method_requested": "auto",
+    "match_method_resolved": "rift",
+    "match_method_reason": "delta sun azimuth is 40.0 deg, at or over the 20 deg bar, so the rift arm was chosen",
+    "match_method_recommended": "rift",
+    "phase_congruency_resolved": true,
+    "phase_congruency_reason": "the rift descriptor reads the phase-congruency map",
+    "clahe_resolved": false,
+    "clahe_reason": "rift is contrast-invariant by construction, so CLAHE would only add a spatially varying non-linearity",
+    "seed_applied": false,
+    "seed_applied_to": null,
+    "seed_reason": "no seed given: nobody seeded",
+    "seed": null,
+    "subpixel_applied": true,
+    "init_method": "geotransform",
+    "init_crs_match": true,
+    "illum_mode": "empirical",
+    "pc_status": "computed",
+    "clahe_applied": false,
+    "clahe_clip": 2.0,
+    "clahe_grid": 8,
+    "mask_fill": "reflect",
+    "mask_fill_px": 8101,
+    "phase_congruency_requested": true,
+    "illum_scale": "auto",
+    "illum_scale_reason": null,
+    "dem_transform": "metadata_geotransform",
+    "dem_align": null,
+    "dem_coverage_frac": null,
+    "pose_uncertainty_px": null,
+    "pose_trusted_reason": null,
+    "dem_transform_fallback": null,
+    "canonicalised": true,
+    "model_candidates": {
+        "similarity": {
+            "rmse_px": 1.6825646878647893,
+            "rmse_common_px": 2.1831913032808115,
+            "inlier_count": 49,
+            "redundancy": 47
+        },
+        "affine": {
+            "rmse_px": 1.610166607250964,
+            "rmse_common_px": 2.2136416199453066,
+            "inlier_count": 44,
+            "redundancy": 41
+        },
+        "homography": {
+            "rmse_px": 1.5650056472553275,
+            "rmse_common_px": 1.5650056472553275,
+            "inlier_count": 52,
+            "redundancy": 48
+        }
+    },
+    "redundancy": 48,
+    "rmse_trustworthy": true,
+    "rmse_warning": null,
+    "models_rejected": null,
+    "verify_status": "ok",
+    "verify_reason": null,
+    "init_gated_out": 3,
+    "init_gate_px": 53.38660880782746,
+    "init_gate_fallback": false,
+    "verify_init_source": "cascade_transform",
+    "cell_info": {
+        "mode": "init_projected",
+        "grid_n": 4,
+        "grid_rows": 4,
+        "grid_cols": 4,
+        "anms": true,
+        "method": "rift",
+        "search_margin_px": 64.0,
+        "ratio_base": 0.9,
+        "strict_score_min": 0.09999999999999998,
+        "putative_count": 95,
+        "strict_count": 95,
+        "relaxed_cells": 0,
+        "cells": {
+            "0": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 5,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 5,
+                "masked_frac": 0.01118001572189711,
+                "src_core": [
+                    0,
+                    0,
+                    107,
+                    107
+                ],
+                "ref_window": [
+                    0,
+                    0,
+                    318,
+                    271
+                ],
+                "search_margin_px": 64.0
+            },
+            "1": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.011791422831688356,
+                "src_core": [
+                    107,
+                    0,
+                    214,
+                    107
+                ],
+                "ref_window": [
+                    33,
+                    0,
+                    423,
+                    289
+                ],
+                "search_margin_px": 64.0
+            },
+            "2": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.013326410522672204,
+                "src_core": [
+                    214,
+                    0,
+                    322,
+                    107
+                ],
+                "ref_window": [
+                    139,
+                    0,
+                    512,
+                    308
+                ],
+                "search_margin_px": 64.0
+            },
+            "3": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.011878766704515677,
+                "src_core": [
+                    322,
+                    0,
+                    429,
+                    107
+                ],
+                "ref_window": [
+                    245,
+                    0,
+                    512,
+                    315
+                ],
+                "search_margin_px": 64.0
+            },
+            "4": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.00899641890121408,
+                "src_core": [
+                    0,
+                    107,
+                    107,
+                    214
+                ],
+                "ref_window": [
+                    0,
+                    0,
+                    310,
+                    376
+                ],
+                "search_margin_px": 64.0
+            },
+            "5": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.013014237051270854,
+                "src_core": [
+                    107,
+                    107,
+                    214,
+                    214
+                ],
+                "ref_window": [
+                    15,
+                    0,
+                    416,
+                    395
+                ],
+                "search_margin_px": 64.0
+            },
+            "6": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.012807199723087574,
+                "src_core": [
+                    214,
+                    107,
+                    322,
+                    214
+                ],
+                "ref_window": [
+                    120,
+                    12,
+                    512,
+                    413
+                ],
+                "search_margin_px": 64.0
+            },
+            "7": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.006812822080531051,
+                "src_core": [
+                    322,
+                    107,
+                    429,
+                    214
+                ],
+                "ref_window": [
+                    227,
+                    31,
+                    512,
+                    421
+                ],
+                "search_margin_px": 64.0
+            },
+            "8": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.011163032191069575,
+                "src_core": [
+                    0,
+                    214,
+                    107,
+                    322
+                ],
+                "ref_window": [
+                    0,
+                    92,
+                    292,
+                    482
+                ],
+                "search_margin_px": 64.0
+            },
+            "9": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.009518864659051576,
+                "src_core": [
+                    107,
+                    214,
+                    214,
+                    322
+                ],
+                "ref_window": [
+                    0,
+                    99,
+                    397,
+                    501
+                ],
+                "search_margin_px": 64.0
+            },
+            "10": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.010545267489711935,
+                "src_core": [
+                    214,
+                    214,
+                    322,
+                    322
+                ],
+                "ref_window": [
+                    102,
+                    118,
+                    504,
+                    512
+                ],
+                "search_margin_px": 64.0
+            },
+            "11": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.01124956732433368,
+                "src_core": [
+                    322,
+                    214,
+                    429,
+                    322
+                ],
+                "ref_window": [
+                    208,
+                    136,
+                    512,
+                    512
+                ],
+                "search_margin_px": 64.0
+            },
+            "12": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.009957201502314612,
+                "src_core": [
+                    0,
+                    322,
+                    107,
+                    429
+                ],
+                "ref_window": [
+                    0,
+                    198,
+                    273,
+                    512
+                ],
+                "search_margin_px": 64.0
+            },
+            "13": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.011529391213206393,
+                "src_core": [
+                    107,
+                    322,
+                    214,
+                    429
+                ],
+                "ref_window": [
+                    0,
+                    205,
+                    379,
+                    512
+                ],
+                "search_margin_px": 64.0
+            },
+            "14": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.01176877812391831,
+                "src_core": [
+                    214,
+                    322,
+                    322,
+                    429
+                ],
+                "ref_window": [
+                    94,
+                    224,
+                    485,
+                    512
+                ],
+                "search_margin_px": 64.0
+            },
+            "15": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.9,
+                "count": 6,
+                "anms": true,
+                "relaxed": false,
+                "count_strict": 6,
+                "masked_frac": 0.011791422831688356,
+                "src_core": [
+                    322,
+                    322,
+                    429,
+                    429
+                ],
+                "ref_window": [
+                    201,
+                    242,
+                    512,
+                    512
+                ],
+                "search_margin_px": 64.0
+            }
+        },
+        "level": 0,
+        "src_decimation": 2.0,
+        "ref_decimation": 1.0,
+        "src_shape": [
+            429,
+            429
+        ],
+        "ref_shape": [
+            512,
+            512
+        ],
+        "coords_frame": "level pixels: src_core is in the src_shape frame, ref_window in the ref_shape frame; scale by full_shape/src_shape (resp. ref) to reach full resolution, not by src_decimation"
+    },
+    "refine_method": "phase_cross_correlation",
+    "cascade": {
+        "level_rule": "K = 1 + ceil(log(r)/log(4)), capped so the coarsest level keeps both images >= 192 px and at 6 levels; the finer image is decimated to meet the coarser at every level",
+        "scale_src_to_ref": 0.5,
+        "scale_ratio": 2.0,
+        "scale_source": "init",
+        "levels": 2,
+        "levels_source": "scale_ratio",
+        "source_base_decimation": 2.0,
+        "reference_base_decimation": 1.0,
+        "level_info": [
+            {
+                "level": 1,
+                "src_decimation": 4.0,
+                "ref_decimation": 2.0,
+                "src_shape": [
+                    214,
+                    214
+                ],
+                "ref_shape": [
+                    256,
+                    256
+                ],
+                "search_margin_px": null,
+                "seeded": true,
+                "match_count": 55,
+                "inlier_count": 30,
+                "rmse_px": 1.2300029286215566,
+                "rmse_trustworthy": true,
+                "method": "rift",
+                "model": "similarity",
+                "status": "ok",
+                "reason": "",
+                "transform": [
+                    [
+                        0.49203200356730753,
+                        -0.0861583459807473,
+                        84.9182591455198
+                    ],
+                    [
+                        0.0861583459807473,
+                        0.49203200356730753,
+                        8.300499839601569
+                    ],
+                    [
+                        0.0,
+                        0.0,
+                        1.0
+                    ]
+                ],
+                "scale_drift": 1.0009638855910659
+            },
+            {
+                "level": 0,
+                "src_decimation": 2.0,
+                "ref_decimation": 1.0,
+                "src_shape": [
+                    429,
+                    429
+                ],
+                "ref_shape": [
+                    512,
+                    512
+                ],
+                "search_margin_px": 64.0,
+                "seeded": true,
+                "match_count": 95,
+                "inlier_count": 64,
+                "rmse_px": 1.5980710108664247,
+                "rmse_trustworthy": true,
+                "method": "rift",
+                "model": "homography",
+                "status": "ok",
+                "reason": "",
+                "transform": [
+                    [
+                        0.4991440533668989,
+                        -0.09091120155143007,
+                        84.45352291373435
+                    ],
+                    [
+                        0.09338165010787217,
+                        0.48952526495139204,
+                        6.085877233317622
+                    ],
+                    [
+                        1.919830175795804e-05,
+                        -1.5965188396353243e-05,
+                        0.9999983834433191
+                    ]
+                ],
+                "scale_drift": 1.006619495502068
+            }
+        ],
+        "skipped_levels": [],
+        "status": "ok",
+        "stop_reason": "",
+        "final_level": 0,
+        "source_decimation": 2.0,
+        "transform": [
+            [
+                0.4991440533668989,
+                -0.09091120155143007,
+                84.45352291373435
+            ],
+            [
+                0.09338165010787217,
+                0.48952526495139204,
+                6.085877233317622
+            ],
+            [
+                1.919830175795804e-05,
+                -1.5965188396353243e-05,
+                0.9999983834433191
+            ]
+        ],
+        "match_count": 95,
+        "inlier_count": 64,
+        "cell_info": {
+            "mode": "init_projected",
+            "grid_n": 4,
+            "grid_rows": 4,
+            "grid_cols": 4,
+            "anms": true,
+            "method": "rift",
+            "search_margin_px": 64.0,
+            "ratio_base": 0.9,
+            "strict_score_min": 0.09999999999999998,
+            "putative_count": 95,
+            "strict_count": 95,
+            "relaxed_cells": 0,
+            "cells": {
+                "0": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 5,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 5,
+                    "masked_frac": 0.01118001572189711,
+                    "src_core": [
+                        0,
+                        0,
+                        107,
+                        107
+                    ],
+                    "ref_window": [
+                        0,
+                        0,
+                        318,
+                        271
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "1": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.011791422831688356,
+                    "src_core": [
+                        107,
+                        0,
+                        214,
+                        107
+                    ],
+                    "ref_window": [
+                        33,
+                        0,
+                        423,
+                        289
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "2": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.013326410522672204,
+                    "src_core": [
+                        214,
+                        0,
+                        322,
+                        107
+                    ],
+                    "ref_window": [
+                        139,
+                        0,
+                        512,
+                        308
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "3": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.011878766704515677,
+                    "src_core": [
+                        322,
+                        0,
+                        429,
+                        107
+                    ],
+                    "ref_window": [
+                        245,
+                        0,
+                        512,
+                        315
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "4": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.00899641890121408,
+                    "src_core": [
+                        0,
+                        107,
+                        107,
+                        214
+                    ],
+                    "ref_window": [
+                        0,
+                        0,
+                        310,
+                        376
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "5": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.013014237051270854,
+                    "src_core": [
+                        107,
+                        107,
+                        214,
+                        214
+                    ],
+                    "ref_window": [
+                        15,
+                        0,
+                        416,
+                        395
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "6": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.012807199723087574,
+                    "src_core": [
+                        214,
+                        107,
+                        322,
+                        214
+                    ],
+                    "ref_window": [
+                        120,
+                        12,
+                        512,
+                        413
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "7": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.006812822080531051,
+                    "src_core": [
+                        322,
+                        107,
+                        429,
+                        214
+                    ],
+                    "ref_window": [
+                        227,
+                        31,
+                        512,
+                        421
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "8": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.011163032191069575,
+                    "src_core": [
+                        0,
+                        214,
+                        107,
+                        322
+                    ],
+                    "ref_window": [
+                        0,
+                        92,
+                        292,
+                        482
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "9": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.009518864659051576,
+                    "src_core": [
+                        107,
+                        214,
+                        214,
+                        322
+                    ],
+                    "ref_window": [
+                        0,
+                        99,
+                        397,
+                        501
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "10": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.010545267489711935,
+                    "src_core": [
+                        214,
+                        214,
+                        322,
+                        322
+                    ],
+                    "ref_window": [
+                        102,
+                        118,
+                        504,
+                        512
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "11": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.01124956732433368,
+                    "src_core": [
+                        322,
+                        214,
+                        429,
+                        322
+                    ],
+                    "ref_window": [
+                        208,
+                        136,
+                        512,
+                        512
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "12": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.009957201502314612,
+                    "src_core": [
+                        0,
+                        322,
+                        107,
+                        429
+                    ],
+                    "ref_window": [
+                        0,
+                        198,
+                        273,
+                        512
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "13": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.011529391213206393,
+                    "src_core": [
+                        107,
+                        322,
+                        214,
+                        429
+                    ],
+                    "ref_window": [
+                        0,
+                        205,
+                        379,
+                        512
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "14": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.01176877812391831,
+                    "src_core": [
+                        214,
+                        322,
+                        322,
+                        429
+                    ],
+                    "ref_window": [
+                        94,
+                        224,
+                        485,
+                        512
+                    ],
+                    "search_margin_px": 64.0
+                },
+                "15": {
+                    "status": "populated",
+                    "attempts": 1,
+                    "ratio_threshold": 0.9,
+                    "count": 6,
+                    "anms": true,
+                    "relaxed": false,
+                    "count_strict": 6,
+                    "masked_frac": 0.011791422831688356,
+                    "src_core": [
+                        322,
+                        322,
+                        429,
+                        429
+                    ],
+                    "ref_window": [
+                        201,
+                        242,
+                        512,
+                        512
+                    ],
+                    "search_margin_px": 64.0
+                }
+            },
+            "level": 0,
+            "src_decimation": 2.0,
+            "ref_decimation": 1.0,
+            "src_shape": [
+                429,
+                429
+            ],
+            "ref_shape": [
+                512,
+                512
+            ],
+            "coords_frame": "level pixels: src_core is in the src_shape frame, ref_window in the ref_shape frame; scale by full_shape/src_shape (resp. ref) to reach full resolution, not by src_decimation"
+        },
+        "cell_info_level": 0
+    },
+    "gt_source": "gt.json",
+    "output_grid": "both",
+    "registered_source_written": true,
+    "inlier_ratio_strict": 0.6421052631578947,
+    "strict_putative_count": 95,
+    "strict_inlier_count": 61,
+    "strict_score_min": 0.09999999999999998,
+    "inlier_ratio_strict_status": "ok",
+    "inlier_ratio_strict_definition": "inliers among putatives with score >= strict_score_min, over that same subset; strict_score_min = 1 - match.ratio_threshold, so the subset is the putatives that pass the Lowe ratio test at the configured threshold before match/tile relaxes it per cell to fill a quota. inlier_ratio itself is unchanged: it is over ALL putatives, relaxed ones included."
+}

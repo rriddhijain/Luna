@@ -1,12 +1,30 @@
 """Seat ① (matching) x Seat ⑥ (geometry) — interaction I6, pillar P2 (uniformity).
 
-Tiled matching driven by the coarse init: the SOURCE is partitioned into a
-grid_n x grid_n grid, and each source tile is matched against the reference
-window it actually projects into under `init` (source -> reference), not
-against the reference tile with the same grid index. Per-cell quotas are
-enforced *during* matching by relaxing the ratio threshold, and every cell
-reports what happened to it so uniformity_report can distinguish
-"insufficient_texture" from "never attempted".
+Tiled matching driven by the coarse init: the SOURCE is partitioned into the
+rows x cols grid `geometry.uniformity.grid_shape` defines (grid_n along the
+short axis), and each source tile is matched against the reference window it
+actually projects into under `init` (source -> reference), not against the
+reference tile with the same grid index. Per-cell quotas are enforced *during*
+matching by relaxing the ratio threshold, and every cell reports what happened
+to it so uniformity_report can distinguish "insufficient_texture" from
+"never attempted".
+
+The grid alone does not spread points WITHIN a cell: filling the quota by score
+sort lets all K land in one textured corner. `match.anms` (default on) fills it
+with the quad-tree instead.
+
+The relaxation is why `inlier_ratio` is not a quality score. Loosening the ratio
+test to reach min_matches admits candidates the configured test would have
+rejected, so the ratio's denominator grows with how hard the pair is. Tightening
+it instead does not trade ratio for anything useful: measured on
+fixtures/synth_pair_A (RIFT, Δsun 100°), base ratio 0.90 with relaxation gives
+218 putatives / 64 inliers / ratio 0.294 at 100% coverage, 0.90 without
+relaxation 167 / 57 / 0.341, 0.85 without relaxation 28 / 11 / 0.393 at 56%
+coverage and no held-out split left to measure, and 0.80 finds nothing at all
+and the registration fails. So `info` publishes the relaxation accounting
+(`ratio_base`, `strict_score_min`, `putative_count`, `strict_count`,
+`relaxed_cells`, and per cell `relaxed`/`count_strict`) instead, and io/writers
+turns it into `inlier_ratio_strict` alongside the unmodified `inlier_ratio`.
 """
 
 import logging
@@ -15,6 +33,8 @@ import cv2
 import numpy as np
 
 from samanvay.types import CanonicalImage, MatchSet
+from samanvay.geometry.uniformity import grid_shape
+from samanvay.match.anms import anms_quadtree
 from samanvay.match.detect import detect_keypoints
 from samanvay.match.describe import describe_keypoints
 
@@ -113,6 +133,11 @@ def match_tiled(
 
     base_ratio = float(config.get("ratio_threshold", 0.9 if method in ("l2", "rift") else 0.75))
     relax_attempts = max(1, int(config.get("relax_attempts", 4)))
+    # The score-space form of the UNRELAXED Lowe test. score = 1 - d1/(d2+eps), so
+    # `score >= 1 - base_ratio` is exactly `d1/(d2+eps) <= base_ratio`: the test the
+    # config asked for, before any cell loosened it to fill its quota. Published in
+    # `info` so the strict subset is recoverable from matches.csv alone.
+    strict_score_min = 1.0 - base_ratio
     relax_step = float(config.get("relax_ratio_step", 0.05))
     ratio_ceiling = float(config.get("ratio_ceiling", 0.95))
     max_masked_frac = float(config.get("max_masked_frac", 0.5))
@@ -128,25 +153,42 @@ def match_tiled(
     else:
         init = np.asarray(init, dtype=np.float64).reshape(3, 3)
 
+    # The cell partition is grid_shape's alone, so the ids here and the ids
+    # uniformity_report assigns from src_xy are the same ids.
+    rows, cols = grid_shape((src_h, src_w), grid_n, bool(config.get("grid_aspect", True)))
+    use_anms = bool(config.get("anms", True))
+
     info = {
         "mode": "degraded_same_grid" if degraded else "init_projected",
         "grid_n": int(grid_n),
+        "grid_rows": int(rows),
+        "grid_cols": int(cols),
+        "anms": use_anms,
         "method": method,
         "search_margin_px": margin_cfg,   # None => derived per cell
+        # Relaxation accounting. The loop below loosens the ratio test cell by cell until
+        # min_matches is met, so `inlier_ratio`'s denominator is partly candidates admitted
+        # at a threshold nobody would have chosen up front. These say how much of the
+        # returned set that is, and let a reader recompute the ratio without them.
+        "ratio_base": base_ratio,
+        "strict_score_min": strict_score_min,
+        "putative_count": 0,
+        "strict_count": 0,
+        "relaxed_cells": 0,
         "cells": {},
     }
 
     if grid_n < 1 or src_h == 0 or src_w == 0 or ref_h == 0 or ref_w == 0:
         return _empty_matchset(), info
 
-    sy_e, sx_e = _edges(src_h, grid_n), _edges(src_w, grid_n)
-    ry_e, rx_e = _edges(ref_h, grid_n), _edges(ref_w, grid_n)
+    sy_e, sx_e = _edges(src_h, rows), _edges(src_w, cols)
+    ry_e, rx_e = _edges(ref_h, rows), _edges(ref_w, cols)
 
     out_src, out_ref, out_score, out_method, out_cell = [], [], [], [], []
 
-    for row in range(grid_n):
-        for col in range(grid_n):
-            cell_id = col + grid_n * row
+    for row in range(rows):
+        for col in range(cols):
+            cell_id = col + cols * row
             budget = cell_budgets.get(cell_id, {})
             min_matches = int(budget.get("min_matches", 5))
             max_matches = int(budget.get("max_matches", 50))
@@ -161,6 +203,13 @@ def match_tiled(
                 "attempts": 0,
                 "ratio_threshold": None,   # None = never attempted, not "0.75 by default"
                 "count": 0,
+                # True/False once the quota actually bites; None while it has not,
+                # because no selection rule ran and neither answer would be true.
+                "anms": None,
+                # None until the ratio loop runs: a cell that was never attempted did not
+                # decline to relax, and False would say it did.
+                "relaxed": None,
+                "count_strict": None,
                 "masked_frac": None,
                 "src_core": (cx0, cy0, cx1, cy1),
                 "ref_window": None,
@@ -246,13 +295,26 @@ def match_tiled(
                 cell["ratio_threshold"] = thresh
                 if int(keep.sum()) >= min_matches or thresh >= ratio_ceiling:
                     break
+            cell["relaxed"] = bool(thresh > base_ratio)
 
             k_src, k_ref = cand_src[keep], cand_ref[keep]
             k_d1, k_d2 = d1[keep], d2[keep]
             k_score = np.where(np.isfinite(k_d2), 1.0 - k_d1 / (k_d2 + 1e-6), 1.0).astype(np.float32)
 
             if len(k_src) > max_matches:
-                top = np.argsort(k_score)[::-1][:max_matches]
+                # anms_quadtree treats k <= 0 as "no quota" and returns everything,
+                # which is the opposite of what max_matches=0 asks this branch for.
+                # The score sort is the definition of the quota, so a non-positive
+                # budget stays on it and the two arms of the gate cannot disagree.
+                anms_here = use_anms and max_matches > 0
+                if anms_here:
+                    # Spread the quota over the cell core. A score sort has no
+                    # coordinate term, so it fills the quota wherever the texture
+                    # happened to be strongest and the grid buys nothing in-cell.
+                    top = anms_quadtree(k_src, k_score, max_matches, (cx0, cy0, cx1, cy1))
+                else:
+                    top = np.argsort(k_score)[::-1][:max_matches]
+                cell["anms"] = anms_here
                 k_src, k_ref, k_score = k_src[top], k_ref[top], k_score[top]
 
             cell["count"] = int(len(k_src))
@@ -266,6 +328,7 @@ def match_tiled(
             out_method.append(np.full(len(k_src), method_id, dtype=np.uint8))
             out_cell.append(np.full(len(k_src), cell_id, dtype=np.int32))
 
+    info["relaxed_cells"] = sum(1 for c in info["cells"].values() if c.get("relaxed"))
     if not out_src:
         return _empty_matchset(), info
 
@@ -289,11 +352,17 @@ def match_tiled(
     # cell["count"] was recorded before the dedup, so make info describe what is returned.
     # Only cells the matcher actually attempted are touched: masked_invalid must survive,
     # because a cell correctly declined is not a cell that found nothing.
+    strict = score >= np.float32(strict_score_min)
     for cell_id, cell in info["cells"].items():
         if cell.get("status") in ("populated", "insufficient_texture"):
-            n = int(np.count_nonzero(cell_arr == cell_id))
+            here = cell_arr == cell_id
+            n = int(np.count_nonzero(here))
             cell["count"] = n
+            cell["count_strict"] = int(np.count_nonzero(here & strict))
             cell["status"] = "populated" if n else "insufficient_texture"
+
+    info["putative_count"] = int(len(src_xy))
+    info["strict_count"] = int(strict.sum())
 
     return MatchSet(src_xy=src_xy, ref_xy=ref_xy, score=score,
                     method=method_arr, cell=cell_arr), info

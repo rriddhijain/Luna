@@ -179,9 +179,14 @@ def test_realistic_pair_reports_finite_sigma():
 
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
+        # match.method is pinned, not left at the "auto" default: this test measures
+        # sigma on the RIFT arm (which is what auto resolves to at delta-sun 30), and
+        # resolving "auto" is pipeline/stages.py's job, tested there.
         m = run_pipeline("fixtures/dsun_sweep/dsun_30/source.tif",
                          "fixtures/dsun_sweep/dsun_30/reference.tif",
-                         "runs/_test_sigma", config={"cache": {"enabled": False}})
+                         "runs/_test_sigma",
+                         config={"cache": {"enabled": False},
+                                 "match": {"method": "rift"}})
 
     assert m["refined_count"] > 0, "nothing refined on a pair that should refine"
     assert m["mean_sigma_px"] is not None, (

@@ -3,6 +3,7 @@ import numpy as np
 import pytest
 
 from samanvay.types import CanonicalImage
+from samanvay.match.anms import anms_quadtree
 from samanvay.match.tile import match_tiled
 
 # Ground-truth source -> reference homography: 1.5x scale + a large translation, so the
@@ -214,3 +215,245 @@ def test_no_duplicate_tie_points(pair):
     # and the cell ledger must describe what is actually returned.
     assert np.all(np.isfinite(matches.score))
     assert sum(c["count"] for c in info["cells"].values()) == len(matches.src_xy)
+
+
+# --- ANMS ------------------------------------------------------------------
+
+def _quadrant(xy, bbox=(0.0, 0.0, 100.0, 100.0)):
+    """Which quarter of the bbox each point is in: 0 TL, 1 TR, 2 BL, 3 BR."""
+    xm, ym = 0.5 * (bbox[0] + bbox[2]), 0.5 * (bbox[1] + bbox[3])
+    xy = np.asarray(xy, dtype=np.float64).reshape(-1, 2)
+    return (xy[:, 0] >= xm).astype(int) + 2 * (xy[:, 1] >= ym).astype(int)
+
+
+def _clustered_cell():
+    """90 high-scoring points in one corner, 10 low-scoring ones spread over the rest.
+
+    This is the lunar case the grid alone does not solve: one textured patch inside an
+    otherwise smooth mare cell.
+    """
+    rng = np.random.default_rng(0)
+    corner = rng.uniform(0.0, 10.0, size=(90, 2))
+    spread = np.array([[75., 25.], [85., 15.], [60., 40.],
+                       [25., 75.], [15., 85.], [40., 60.],
+                       [75., 75.], [85., 85.], [60., 90.], [90., 60.]])
+    xy = np.vstack([corner, spread])
+    score = np.concatenate([rng.uniform(0.9, 1.0, 90), np.full(10, 0.1)])
+    return xy, score
+
+
+def test_anms_spreads_a_quota_the_score_sort_clusters():
+    xy, score = _clustered_cell()
+    bbox = (0.0, 0.0, 100.0, 100.0)
+    k = 8
+
+    by_score = np.argsort(score)[::-1][:k]
+    assert len(set(_quadrant(xy[by_score]).tolist())) == 1      # all 8 in one corner
+
+    kept = anms_quadtree(xy, score, k, bbox)
+    assert len(kept) == k
+    assert len(set(_quadrant(xy[kept]).tolist())) >= 3
+    # The quota is split by region, not by score, so the corner cannot take more than
+    # its quarter even though it holds 90% of the candidates and every top score.
+    assert int(np.sum(_quadrant(xy[kept]) == 0)) <= k // 4 + 1
+    # ... and within the corner it still takes the best of what is there.
+    assert score[kept].max() > 0.9
+
+
+def test_anms_returns_unique_ascending_indices_and_is_deterministic():
+    xy, score = _clustered_cell()
+    bbox = (0.0, 0.0, 100.0, 100.0)
+    for k in (1, 3, 4, 8, 17, 50, 99):
+        kept = anms_quadtree(xy, score, k, bbox)
+        assert len(kept) == k                                   # the quota is spent in full
+        assert len(np.unique(kept)) == k
+        assert np.all(np.diff(kept) > 0)
+        assert kept.min() >= 0 and kept.max() < len(xy)
+        assert np.array_equal(kept, anms_quadtree(xy, score, k, bbox))
+
+
+def test_anms_never_reorders_a_quota_that_does_not_bite():
+    xy, score = _clustered_cell()
+    bbox = (0.0, 0.0, 100.0, 100.0)
+    assert np.array_equal(anms_quadtree(xy, score, 100, bbox), np.arange(100))
+    assert np.array_equal(anms_quadtree(xy, score, 500, bbox), np.arange(100))
+    assert np.array_equal(anms_quadtree(xy, score, 0, bbox), np.arange(100))
+    assert np.array_equal(anms_quadtree(xy, score, -5, bbox), np.arange(100))
+    assert anms_quadtree(np.zeros((0, 2)), np.zeros(0), 5, bbox).shape == (0,)
+
+
+def test_anms_degrades_to_the_score_sort_instead_of_raising():
+    xy, score = _clustered_cell()
+    best3 = np.sort(np.argsort(score)[::-1][:3])
+
+    # A zero-area or non-finite bbox has no quadrants to spread over.
+    assert np.array_equal(anms_quadtree(xy, score, 3, (0, 0, 0, 0)), best3)
+    assert np.array_equal(anms_quadtree(xy, score, 3, (0, 0, np.nan, 100)), best3)
+    assert np.array_equal(anms_quadtree(xy, score, 3, (0, 0)), best3)
+
+    # Coincident points cannot be separated at any depth; the quota is still filled.
+    same = np.zeros((20, 2)) + 5.0
+    assert len(anms_quadtree(same, np.arange(20.0), 4, (0, 0, 100, 100))) == 4
+
+    # A NaN coordinate cannot be placed in the tree, and a NaN score is the worst
+    # point there is — neither may raise, and neither may be silently mis-located.
+    holed = xy.copy()
+    holed[3] = np.nan
+    kept = anms_quadtree(holed, score, 8, (0, 0, 100, 100))
+    assert len(kept) == 8 and len(np.unique(kept)) == 8
+    bad_score = score.copy()
+    bad_score[:5] = np.nan
+    assert len(anms_quadtree(xy, bad_score, 8, (0, 0, 100, 100))) == 8
+
+
+def test_anms_gate_is_reported_and_off_keeps_the_score_sort(pair):
+    src, ref = pair
+    budgets = {i: {"min_matches": 1, "max_matches": 3} for i in range(4)}
+    kw = dict(grid_n=2, halo_px=16, cell_budgets=budgets, init=GT_H)
+
+    on, on_info = match_tiled(src, ref, config={"method": "sift", "anms": True}, **kw)
+    off, off_info = match_tiled(src, ref, config={"method": "sift", "anms": False}, **kw)
+
+    assert on_info["anms"] is True and off_info["anms"] is False
+    assert (on_info["grid_rows"], on_info["grid_cols"]) == (2, 2)
+
+    # The flag is per cell and only claimed where the quota actually bit: a cell that
+    # never reached its budget ran no selection rule at all, so neither answer is true.
+    bit_on = [c for c in on_info["cells"].values() if c["anms"] is not None]
+    bit_off = [c for c in off_info["cells"].values() if c["anms"] is not None]
+    assert bit_on and bit_off
+    assert all(c["anms"] is True for c in bit_on)
+    assert all(c["anms"] is False for c in bit_off)
+
+    for cid in range(4):
+        assert int(np.sum(on.cell == cid)) <= 3
+        assert int(np.sum(off.cell == cid)) <= 3
+
+    # anms=False is the pre-ANMS rule verbatim — argsort(score)[::-1][:k] — so each
+    # cell's kept scores come back in descending order. ANMS returns them in index
+    # order instead, because it picks by region.
+    for cell in off_info["cells"]:
+        s = off.score[off.cell == cell]
+        assert np.all(np.diff(s) <= 1e-6), (cell, s)
+
+    # Both arms are on true tie-points; ANMS trades score for spread, not for accuracy.
+    assert len(on.src_xy) > 0
+    assert np.median(_gt_error_src_px(on)) < 2.0
+
+
+def _cell_quadrants(matches, rows, cols, size=SRC_N):
+    """Total occupied sub-quadrants over all populated cells; max is 4 per cell.
+
+    The number the grid cannot see: coverage_pct and dispersion_cv are per CELL and
+    score 100% / 0.0 whether a cell's points fill it or sit in one corner of it.
+    """
+    y_e = np.round(np.linspace(0, size, rows + 1))
+    x_e = np.round(np.linspace(0, size, cols + 1))
+    total = 0
+    for cell_id in np.unique(matches.cell):
+        row, col = divmod(int(cell_id), cols)
+        x_m, y_m = 0.5 * (x_e[col] + x_e[col + 1]), 0.5 * (y_e[row] + y_e[row + 1])
+        here = matches.src_xy[matches.cell == cell_id]
+        total += len({(x >= x_m, y >= y_m) for x, y in here})
+    return total
+
+
+def test_a_bound_quota_takes_the_anms_path_and_spreads_within_the_cell(pair):
+    """The regime the shipped ablation never reached: candidates EXCEED the quota.
+
+    `match.max_matches` is 50 by default and both shipped fixtures top out at 49
+    candidates per cell, so `if len(k_src) > max_matches` is never entered, `cell["anms"]`
+    stays None and an anms on/off ablation row measures nothing at all
+    (bench/baselines.md section 2). It binds unaided on real LROC NAC — 168 of 172 cells
+    on apollo16_dsun004 at the shipped 50 — and here it is forced with a budget of 6.
+    """
+    src, ref = pair
+    budgets = {i: {"min_matches": 1, "max_matches": 6} for i in range(4)}
+    kw = dict(grid_n=2, halo_px=16, cell_budgets=budgets, init=GT_H)
+
+    on, on_info = match_tiled(src, ref, config={"method": "sift", "anms": True}, **kw)
+    off, off_info = match_tiled(src, ref, config={"method": "sift", "anms": False}, **kw)
+
+    # The branch ran: every one of the four cells had more candidates than its budget.
+    bound = [c for c in on_info["cells"].values() if c["anms"] is not None]
+    assert len(bound) == 4
+    assert all(c["anms"] is True for c in bound)
+    assert all(c["anms"] is False for c in off_info["cells"].values() if c["anms"] is not None)
+
+    # ... and the points it kept are spread where the score sort's are not. Measured
+    # 16/16 quadrants with ANMS against 13/16 on the score sort.
+    quad_on = _cell_quadrants(on, 2, 2)
+    quad_off = _cell_quadrants(off, 2, 2)
+    assert quad_on > quad_off, (quad_on, quad_off)
+    assert quad_on == 16
+
+    # The spread is not bought by dropping points: every cell spends its whole quota on
+    # the ANMS arm (the score sort can end up one short, because the location dedup that
+    # runs after the quota removes a duplicate it happened to keep). And the points are
+    # still on the ground truth — ANMS trades score for position, not for correctness.
+    for cell_id in range(4):
+        assert int(np.sum(on.cell == cell_id)) == 6
+        assert int(np.sum(off.cell == cell_id)) <= 6
+    assert np.median(_gt_error_src_px(on)) < 2.0
+
+
+def test_a_zero_budget_keeps_nothing_on_either_arm(pair):
+    """anms_quadtree reads k <= 0 as "no quota"; the cell branch must not inherit that.
+
+    max_matches=0 asks for no matches. Handing 0 to the quad-tree returns every
+    candidate instead, so the ANMS arm would deliver more points than the score-sort
+    arm at the one budget where both must deliver none.
+    """
+    src, ref = pair
+    budgets = {i: {"min_matches": 1, "max_matches": 0} for i in range(4)}
+    kw = dict(grid_n=2, halo_px=16, cell_budgets=budgets, init=GT_H)
+
+    on, on_info = match_tiled(src, ref, config={"method": "sift", "anms": True}, **kw)
+    off, _ = match_tiled(src, ref, config={"method": "sift", "anms": False}, **kw)
+
+    assert len(on.src_xy) == 0 and len(off.src_xy) == 0
+    # The gate is still True for the run; no cell claims a quad-tree selection it
+    # did not get, because the score sort is what actually ran there.
+    assert on_info["anms"] is True
+    assert all(c["anms"] in (None, False) for c in on_info["cells"].values())
+
+
+# ------------------------------------------------- relaxation accounting (inlier_ratio)
+
+def test_relaxation_accounting_separates_strict_from_relaxed_putatives(pair):
+    """inlier_ratio's denominator grows when a cell loosens its ratio test; say by how much.
+
+    The strict subset is defined in score space so it is recoverable from matches.csv
+    alone: score >= strict_score_min is the Lowe test at the configured threshold.
+    """
+    src, ref = pair
+    cfg = {"method": "sift", "ratio_threshold": 0.3, "relax_attempts": 5,
+           "relax_ratio_step": 0.2, "ratio_ceiling": 0.95}
+    # A quota no cell can fill at ratio 0.3, so every cell is driven up the ladder.
+    budgets = {c: {"min_matches": 400, "max_matches": 2000} for c in range(4)}
+    matches, info = match_tiled(src, ref, grid_n=2, halo_px=16, config=cfg,
+                                cell_budgets=budgets, init=GT_H)
+
+    assert info["ratio_base"] == 0.3
+    assert info["strict_score_min"] == pytest.approx(0.7)
+    assert info["putative_count"] == len(matches.src_xy)
+    assert info["relaxed_cells"] > 0
+    assert 0 < info["strict_count"] < info["putative_count"]
+    # The published threshold reproduces the count from the returned scores.
+    assert info["strict_count"] == int((matches.score >= info["strict_score_min"]).sum())
+    assert sum(c["count_strict"] for c in info["cells"].values()
+               if c["count_strict"] is not None) == info["strict_count"]
+
+
+def test_no_cell_is_marked_relaxed_when_the_base_threshold_already_suffices(pair):
+    src, ref = pair
+    cfg = {"method": "sift", "ratio_threshold": 0.9, "relax_attempts": 4}
+    budgets = {c: {"min_matches": 1, "max_matches": 200} for c in range(4)}
+    matches, info = match_tiled(src, ref, grid_n=2, halo_px=16, config=cfg,
+                                cell_budgets=budgets, init=GT_H)
+
+    assert info["relaxed_cells"] == 0
+    assert info["strict_count"] == info["putative_count"] == len(matches.src_xy)
+    for cell in info["cells"].values():
+        # None only where the matcher never reached the ratio loop.
+        assert cell["relaxed"] in (None, False)

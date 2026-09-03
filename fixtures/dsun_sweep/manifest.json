@@ -1,5 +1,5 @@
 {
-  "note": "Accuracy-vs-delta-sun-azimuth series. Geometry, seed, DEM, albedo, sun elevation and noise are identical in every entry; only the source sun azimuth changes. Register each pair, score against gt_points_holdout in that pair's gt.json, and plot RMSE against delta_sun_az_deg.",
+  "note": "Accuracy-vs-delta-sun-azimuth series. Geometry, seed, DEM, albedo, sun elevation and noise are identical in every entry; only the source sun azimuth changes. Register each pair, score against gt_points_holdout in that pair's gt.json, and plot RMSE against delta_sun_az_deg. Delta is the WORLD sun azimuth difference; the source raster is rotated 10 deg, so the delta a matcher reads off the two sidecars is |delta - 10|.",
   "ref_sun_az_deg": 45.0,
   "sun_el_deg": 25.0,
   "ref_shape": [
@@ -7,7 +7,7 @@
     512
   ],
   "seed": 0,
-  "n_pairs": 6,
+  "n_pairs": 14,
   "pairs": [
     {
       "delta_sun_az_deg": 0.0,
@@ -135,6 +135,198 @@
       "source": "fixtures/dsun_sweep/dsun_50/source.tif",
       "reference": "fixtures/dsun_sweep/dsun_50/reference.tif",
       "gt": "fixtures/dsun_sweep/dsun_50/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 60.0,
+      "dir": "fixtures/dsun_sweep/dsun_60",
+      "source": "fixtures/dsun_sweep/dsun_60/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_60/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_60/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 70.0,
+      "dir": "fixtures/dsun_sweep/dsun_70",
+      "source": "fixtures/dsun_sweep/dsun_70/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_70/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_70/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 80.0,
+      "dir": "fixtures/dsun_sweep/dsun_80",
+      "source": "fixtures/dsun_sweep/dsun_80/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_80/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_80/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 90.0,
+      "dir": "fixtures/dsun_sweep/dsun_90",
+      "source": "fixtures/dsun_sweep/dsun_90/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_90/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_90/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 100.0,
+      "dir": "fixtures/dsun_sweep/dsun_100",
+      "source": "fixtures/dsun_sweep/dsun_100/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_100/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_100/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 120.0,
+      "dir": "fixtures/dsun_sweep/dsun_120",
+      "source": "fixtures/dsun_sweep/dsun_120/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_120/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_120/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 150.0,
+      "dir": "fixtures/dsun_sweep/dsun_150",
+      "source": "fixtures/dsun_sweep/dsun_150/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_150/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_150/gt.json",
+      "H_src_to_ref": [
+        [
+          0.5004515447253458,
+          -0.09081584592192078,
+          84.97949397459455
+        ],
+        [
+          0.09317518164442605,
+          0.4907774022279701,
+          7.296854853271479
+        ],
+        [
+          2.340352831592891e-05,
+          -1.4042116989557346e-05,
+          1.0
+        ]
+      ]
+    },
+    {
+      "delta_sun_az_deg": 180.0,
+      "dir": "fixtures/dsun_sweep/dsun_180",
+      "source": "fixtures/dsun_sweep/dsun_180/source.tif",
+      "reference": "fixtures/dsun_sweep/dsun_180/reference.tif",
+      "gt": "fixtures/dsun_sweep/dsun_180/gt.json",
       "H_src_to_ref": [
         [
           0.5004515447253458,

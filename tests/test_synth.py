@@ -180,11 +180,12 @@ def test_the_written_rasters_match_the_declared_shapes_and_dtype(tmp_path):
 
 def test_sweep_produces_one_pair_per_delta(tmp_path):
     out = str(tmp_path / "sweep")
-    entries = render_sweep(out_dir=out, ref_shape=(96, 96), seed=2)
-    assert len(entries) == len(DEFAULT_DELTAS) == 6
+    deltas = (0, 90, 180)  # the two ends and the measured trough; 14 renders would be a slow test
+    entries = render_sweep(out_dir=out, deltas=deltas, ref_shape=(96, 96), seed=2)
+    assert len(entries) == 3
     manifest = json.load(open(os.path.join(out, "manifest.json")))
-    assert manifest["n_pairs"] == 6
-    for entry, delta in zip(entries, DEFAULT_DELTAS):
+    assert manifest["n_pairs"] == 3
+    for entry, delta in zip(entries, deltas):
         assert entry["delta_sun_az_deg"] == float(delta)
         gt = json.load(open(entry["gt"]))
         assert gt["delta_sun_az_deg"] == pytest.approx(float(delta))
@@ -192,6 +193,45 @@ def test_sweep_produces_one_pair_per_delta(tmp_path):
         for name in ("source.tif", "reference.tif", "dem.tif", "gt.json", "README.md",
                      "source.tif.json", "reference.tif.json"):
             assert os.path.exists(os.path.join(entry["dir"], name)), name
+
+
+def test_the_default_sweep_spans_zero_to_opposite_suns():
+    # The trough is at orthogonal illumination (delta 80-100), not at the ends: a sweep that
+    # stops at 50 cannot see it, and one without 180 cannot see the recovery.
+    assert DEFAULT_DELTAS[0] == 0 and DEFAULT_DELTAS[-1] == 180
+    assert list(DEFAULT_DELTAS) == sorted(set(DEFAULT_DELTAS))
+    assert {80, 90, 100}.issubset(set(DEFAULT_DELTAS))
+
+
+def test_an_existing_pair_is_reused_not_re_rendered(tmp_path):
+    # Extending the sweep must not rewrite fixtures that other runs are reading.
+    out = str(tmp_path / "reuse")
+    first = render_sweep(out_dir=out, deltas=(0,), ref_shape=(96, 96), seed=2)
+    stamp = os.path.getmtime(os.path.join(first[0]["dir"], "source.tif"))
+    again = render_sweep(out_dir=out, deltas=(0, 30), ref_shape=(96, 96), seed=2)
+    assert again[0]["reused"] is True and again[1]["reused"] is False
+    assert os.path.getmtime(os.path.join(first[0]["dir"], "source.tif")) == stamp
+    assert json.load(open(os.path.join(out, "manifest.json")))["n_pairs"] == 2
+    # a reused entry still carries the geometry the manifest promises
+    assert np.allclose(np.array(again[0]["H_src_to_ref"]), np.array(again[1]["H_src_to_ref"]))
+    # "reused" is this call's history, not the fixture's: it must not reach the tracked manifest
+    pairs = json.load(open(os.path.join(out, "manifest.json")))["pairs"]
+    assert all("reused" not in p for p in pairs)
+
+
+def test_a_pair_rendered_with_other_parameters_is_re_rendered_not_reused(tmp_path):
+    # Reuse keyed on the directory name alone would let `--seed 7` write a manifest declaring
+    # seed 7 over rasters rendered with seed 2.
+    out = str(tmp_path / "guard")
+    render_sweep(out_dir=out, deltas=(0,), ref_shape=(96, 96), seed=2)
+    src = os.path.join(out, "dsun_00", "source.tif")
+    stamp = os.path.getmtime(src)
+    for kw in ({"seed": 7}, {"ref_shape": (64, 64)}, {"ref_sun_az_deg": 10.0}):
+        base = {"out_dir": out, "deltas": (0,), "ref_shape": (96, 96), "seed": 2}
+        again = render_sweep(**{**base, **kw})
+        assert again[0]["reused"] is False, kw
+    assert os.path.getmtime(src) != stamp
+    assert json.load(open(os.path.join(out, "dsun_00", "gt.json")))["params"]["ref_sun_az_el"][0] == 10.0
 
 
 def test_sweep_holds_geometry_fixed_and_varies_only_illumination(tmp_path):

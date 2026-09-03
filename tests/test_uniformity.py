@@ -4,7 +4,9 @@ import numpy as np
 import pytest
 
 from samanvay.types import MatchSet, Registration
-from samanvay.geometry.uniformity import assign_cells, uniformity_report
+from samanvay.geometry.uniformity import (assign_cells, grid_shape,
+                                          spatial_distribution_index,
+                                          uniformity_report)
 from samanvay.geometry.metrics import compute_metrics
 
 SHAPE = (256, 256)
@@ -175,3 +177,202 @@ def test_ground_truth_metrics():
     # a singular estimate cannot be compared against truth
     bad = make_reg(2, residuals=np.zeros((2, 2)), H=np.zeros((3, 3)))
     assert compute_metrics(make_set(xy), bad, SHAPE, gt_H=gt)["gt_rmse_px"] is None
+
+
+# --- N x M grid ------------------------------------------------------------
+
+def _old_square_assign(xy, shape, grid_n):
+    """assign_cells exactly as it stood before grid_shape existed (git bc3ad8e)."""
+    grid_n = max(1, int(grid_n))
+    h, w = int(shape[0]), int(shape[1])
+    xy = np.asarray(xy, dtype=np.float64).reshape(-1, 2)
+    if len(xy) == 0 or h <= 0 or w <= 0:
+        return np.zeros(len(xy), dtype=np.int32)
+    x = np.nan_to_num(xy[:, 0], nan=0.0, posinf=w - 1, neginf=0.0)
+    y = np.nan_to_num(xy[:, 1], nan=0.0, posinf=h - 1, neginf=0.0)
+    col = np.clip((x * grid_n / w).astype(np.int64), 0, grid_n - 1)
+    row = np.clip((y * grid_n / h).astype(np.int64), 0, grid_n - 1)
+    return (col + grid_n * row).astype(np.int32)
+
+
+def test_grid_shape_on_a_square_image_is_byte_identical_to_the_old_grid():
+    """The aspect rule must be a no-op on a square image, cell id for cell id."""
+    rng = np.random.default_rng(11)
+    xy = rng.uniform(-20.0, 300.0, size=(4000, 2))          # includes out-of-frame points
+    xy[:5] = [[np.nan, 5.0], [5.0, np.nan], [np.inf, 1.0], [-np.inf, 1.0], [0.0, 0.0]]
+    for grid_n in (1, 2, 3, 4, 7, 16):
+        assert grid_shape(SHAPE, grid_n) == (grid_n, grid_n)
+        new = assign_cells(xy, SHAPE, grid_n)
+        old = _old_square_assign(xy, SHAPE, grid_n)
+        assert new.dtype == old.dtype
+        assert np.array_equal(new, old), grid_n
+        assert new.tobytes() == old.tobytes(), grid_n
+
+
+def test_grid_shape_follows_the_aspect_and_caps_the_long_axis():
+    # grid_n counts the SHORT axis; the long axis is scaled and rounded near-square.
+    assert grid_shape((888, 11952), 4) == (4, 54)            # 4 * 11952/888 = 53.8
+    assert grid_shape((11952, 888), 4) == (54, 4)            # tall strips too
+    assert grid_shape((888, 11952), 4, aspect=False) == (4, 4)
+    # 1:200 would ask for 800 cells of ~15 px, which measures noise. Capped at 64.
+    assert grid_shape((100, 20000), 4) == (4, 64)
+    # Degenerate inputs fall back to the square grid rather than raising.
+    assert grid_shape((0, 0), 3) == (3, 3)
+    assert grid_shape((10, 3000), 0) == (1, 64)
+
+
+def test_uniformity_report_partitions_a_strip_by_rows_and_cols():
+    strip = (100, 800)                                       # 8:1, so 2 -> 2 x 16
+    rep = uniformity_report(make_set([[10, 10], [750, 90]]), strip, 2)
+    assert (rep["grid_rows"], rep["grid_cols"]) == (2, 16)
+    assert rep["grid_n"] == 2                                # short-axis count, unchanged
+    assert len(rep["counts"]) == 32 and len(rep["cell_states"]) == 32
+    # cell id stays col + cols*row: (750, 90) is col 15, row 1.
+    assert list(assign_cells([[750, 90]], strip, 2)) == [31]
+    assert rep["counts"][0] == 1 and rep["counts"][31] == 1
+    assert rep["coverage_pct"] == pytest.approx(100.0 * 2 / 32)
+
+    square_grid = uniformity_report(make_set([[10, 10], [750, 90]]), strip, 2, aspect=False)
+    assert (square_grid["grid_rows"], square_grid["grid_cols"]) == (2, 2)
+    assert len(square_grid["counts"]) == 4
+
+
+def test_masked_cells_follow_the_aspect_grid_too():
+    strip = (100, 800)
+    mask = np.zeros(strip, dtype=np.uint8)
+    mask[:, 400:] = 2                                        # nodata over columns 8..15
+    rep = uniformity_report(make_set([[10, 10]]), strip, 2, mask=mask)
+    states = rep["cell_states"]
+    for row in range(2):
+        for col in range(16):
+            expect_masked = col >= 8
+            assert (states[col + 16 * row] == "masked_invalid") is expect_masked, (row, col)
+    # 16 cells left in the denominator, one of them reached.
+    assert rep["coverage_pct"] == pytest.approx(100.0 / 16)
+
+
+# --- SDI -------------------------------------------------------------------
+
+def test_sdi_is_derived_from_coverage_and_dispersion():
+    assert spatial_distribution_index(100.0, 0.0) == approx(1.0)
+    assert spatial_distribution_index(50.0, 1.0) == approx(0.25)
+    assert spatial_distribution_index(0.0, 0.0) == approx(0.0)
+    # Perfectly even over 4 of 4 cells is the only way to score 1.0.
+    even = uniformity_report(make_set([[30, 30], [200, 30], [30, 200], [200, 200]]), SHAPE, 2)
+    assert even["sdi"] == approx(1.0)
+    # Same coverage, clumped counts: coverage cannot hide the clumping.
+    clumped = uniformity_report(make_set([[30, 30]] * 7 + [[200, 30], [30, 200], [200, 200]]),
+                                SHAPE, 2)
+    assert clumped["coverage_pct"] == even["coverage_pct"]
+    assert clumped["sdi"] < even["sdi"]
+    # Half the cells reached. An unreached cell counts twice — it is missing from
+    # coverage AND it is a zero in the dispersion — so the scalar drops to 0.25,
+    # not to the 0.5 the coverage term alone would suggest.
+    half = uniformity_report(make_set([[30, 30], [200, 30]]), SHAPE, 2)
+    assert (half["coverage_pct"], half["dispersion_cv"]) == (50.0, 1.0)
+    assert half["sdi"] == approx(0.25)
+    assert even["sdi_definition"] == "sdi = (coverage_pct/100) * 1/(1 + dispersion_cv)"
+
+
+def test_sdi_is_null_when_either_input_is_undefined():
+    assert spatial_distribution_index(None, 0.0) is None
+    assert spatial_distribution_index(100.0, None) is None
+    # No matches anywhere: dispersion is undefined, so the scalar is null, not 0.0.
+    none_at_all = uniformity_report(make_set(np.zeros((0, 2))), SHAPE, 2)
+    assert none_at_all["dispersion_cv"] is None and none_at_all["sdi"] is None
+    # Every cell written off: coverage is undefined too.
+    all_masked = uniformity_report(make_set(np.zeros((0, 2))), SHAPE, 2,
+                                   mask=np.full(SHAPE, 2, dtype=np.uint8))
+    assert all_masked["sdi"] is None
+
+    m = compute_metrics(make_set(np.zeros((0, 2))), make_reg(0), SHAPE, grid_n=2)
+    assert m["sdi"] is None
+    assert m["sdi_definition"]
+    assert m["grid_rows"] == 2 and m["grid_cols"] == 2
+    json.dumps(m)
+
+
+# --- metrics passthrough ---------------------------------------------------
+
+def test_metrics_carry_the_held_out_and_tps_keys_from_the_registration():
+    """These are computed in verify.py; compute_metrics is what puts them in metrics.json."""
+    reg_metrics = {
+        "check_rmse_px": 0.83, "check_rmse_all_px": 1.42, "check_p90_px": 2.05,
+        "n_check": 24, "n_control": 96, "n_check_inlier": 21,
+        "check_outlier_frac": 0.125, "check_fraction": 0.2, "check_status": "ok",
+        "tps_applied": np.True_, "tps_status": "applied",
+        "tps_check_rmse_before_px": 1.42, "tps_check_rmse_after_px": 1.09,
+        "tps_n_control": 88,
+    }
+    xy = np.array([[30.0, 30.0], [200.0, 200.0]])
+    m = compute_metrics(make_set(xy), make_reg(2, metrics=reg_metrics), SHAPE, grid_n=2)
+    for key, value in reg_metrics.items():
+        assert m[key] == value, key
+    assert m["tps_applied"] is True                  # np.bool_ would not survive json.dump
+    assert isinstance(m["n_check"], int)
+    json.dumps(m)
+
+
+def test_held_out_keys_are_null_when_the_stage_did_not_run():
+    xy = np.array([[30.0, 30.0], [200.0, 200.0]])
+    m = compute_metrics(make_set(xy), make_reg(2), SHAPE, grid_n=2)
+    for key in ("check_rmse_px", "check_rmse_all_px", "check_p90_px", "n_check",
+                "n_control", "n_check_inlier", "check_outlier_frac", "check_fraction",
+                "check_status", "tps_applied", "tps_status", "tps_n_control",
+                "tps_check_rmse_before_px", "tps_check_rmse_after_px"):
+        assert key in m and m[key] is None, key
+    # A NaN check RMSE is an absence, not a score of nan.
+    nan_run = compute_metrics(make_set(xy), make_reg(2, metrics={"check_rmse_px": np.nan}),
+                              SHAPE, grid_n=2)
+    assert nan_run["check_rmse_px"] is None
+    json.dumps(nan_run)
+
+
+def test_inlier_ratio_is_scored_against_the_plan_bar():
+    xy = np.tile(np.array([[30.0, 30.0], [200.0, 200.0]]), (10, 1))
+    n = len(xy)
+
+    inl = np.zeros(n, dtype=bool)
+    inl[:18] = True                                          # 0.90
+    passing = compute_metrics(make_set(xy), make_reg(n, inliers=inl), SHAPE, grid_n=2)
+    assert passing["inlier_ratio"] == approx(0.9)
+    assert passing["inlier_ratio_pass"] is True
+    assert passing["inlier_ratio_target"] == 0.85
+
+    inl = np.zeros(n, dtype=bool)
+    inl[:16] = True                                          # 0.80 — a miss, and it shows
+    failing = compute_metrics(make_set(xy), make_reg(n, inliers=inl), SHAPE, grid_n=2)
+    assert failing["inlier_ratio_pass"] is False
+
+    inl = np.zeros(n, dtype=bool)
+    inl[:17] = True                                          # exactly 0.85 passes the >= bar
+    edge = compute_metrics(make_set(xy), make_reg(n, inliers=inl), SHAPE, grid_n=2)
+    assert edge["inlier_ratio"] == approx(0.85) and edge["inlier_ratio_pass"] is True
+
+    # No matches at all is an absence, not a failed run: null, and it must be json-safe.
+    empty = compute_metrics(make_set(np.zeros((0, 2))), make_reg(0), SHAPE, grid_n=2)
+    assert empty["inlier_ratio"] is None and empty["inlier_ratio_pass"] is None
+    json.dumps(empty)
+
+
+def test_a_non_finite_count_is_null_not_a_number():
+    """int(inf) raises OverflowError, which is not ValueError. A count that arrived
+    non-finite is an absence, and must not take the run down with it either."""
+    xy = np.array([[30.0, 30.0], [200.0, 200.0]])
+    m = compute_metrics(make_set(xy), make_reg(2, metrics={"n_check": float("inf"),
+                                                           "n_control": float("nan")}),
+                        SHAPE, grid_n=2)
+    assert m["n_check"] is None and m["n_control"] is None
+    json.dumps(m)
+
+
+def test_sdi_is_null_with_no_matches_even_on_a_one_cell_grid():
+    """A single live cell is dispersion_cv 0.0 by convention. With nothing in it that
+    convention would score a run that delivered zero tie-points at 0.0."""
+    empty = uniformity_report(make_set(np.zeros((0, 2))), SHAPE, 1)
+    assert empty["grid_rows"] == 1 and empty["grid_cols"] == 1
+    assert (empty["coverage_pct"], empty["dispersion_cv"]) == (0.0, 0.0)
+    assert empty["sdi"] is None
+    # One match in that cell is a defined, and perfect, distribution.
+    one = uniformity_report(make_set([[30.0, 30.0]]), SHAPE, 1)
+    assert one["sdi"] == approx(1.0)

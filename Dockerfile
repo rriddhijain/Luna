@@ -11,13 +11,16 @@
 #
 # Or use docker-compose.yml, which names one service per artifact.
 #
-# HONESTY NOTE — THIS IMAGE HAS NEVER BEEN BUILT. The authoring machine has the docker
-# CLI and a running daemon but no `docker compose` plugin, no buildx, and no network:
-# python:3.11-slim-bookworm is not in the local image cache and the pip step needs PyPI.
+# HONESTY NOTE — THIS IMAGE HAS STILL NEVER BEEN BUILT. Re-checked 2026-09-03 on the
+# authoring machine: `docker version` reports client 29.5.3 (context colima) and then
+# "failed to connect to the docker API at unix:///Users/.../.colima/default/docker.sock
+# ... no such file or directory"; `docker compose version` answers "docker: unknown
+# command: docker compose". PyPI *is* reachable from this machine, so the blocker is the
+# daemon and the missing compose plugin, not the network. Nothing here has been executed.
 # Every line below is reasoned from the wheels the venv actually resolved, and the
 # claims a Dockerfile can make statically (3.11 base, lock installed before source,
 # non-root final USER, MPLBACKEND=Agg) are asserted by tests/test_deploy.py. Nobody has
-# watched it start. Build it once on a networked machine before demo day.
+# watched it start. Build it once on a machine with a running daemon before demo day.
 
 # ------------------------------------------------------------------ builder
 FROM python:3.11-slim-bookworm AS builder
@@ -45,7 +48,7 @@ COPY requirements.lock ./
 RUN pip install --no-deps -r requirements.lock
 
 # Then the project. Separate layer, separate cache line.
-COPY pyproject.toml README.md ./
+COPY pyproject.toml README.md LICENSE ./
 COPY samanvay ./samanvay
 RUN pip install --no-deps .
 
@@ -87,7 +90,7 @@ COPY --chown=samanvay:samanvay bench ./bench
 COPY --chown=samanvay:samanvay viewer ./viewer
 COPY --chown=samanvay:samanvay scripts ./scripts
 COPY --chown=samanvay:samanvay tests ./tests
-COPY --chown=samanvay:samanvay pyproject.toml README.md requirements.lock Makefile ./
+COPY --chown=samanvay:samanvay pyproject.toml README.md LICENSE requirements.lock Makefile ./
 COPY --chown=samanvay:samanvay Dockerfile docker-compose.yml ./
 COPY --chown=samanvay:samanvay .github ./.github
 # The image carries its own Dockerfile, compose file and workflow because

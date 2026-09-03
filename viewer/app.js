@@ -72,8 +72,12 @@
     $("banners").appendChild(el("div", "note", k + " imagery not embedded — " + notes[k]));
   });
 
+  // check_rmse_px leads: it is measured on tie-points the fit never saw. rmse_px stays,
+  // labelled in-sample, because it is not accuracy and must not be read as accuracy.
   var CARDS = [
-    ["rmse_px", "rmse px", 3], ["gt_rmse_px", "gt rmse px", 3],
+    ["check_rmse_px", "check rmse px (held out)", 3], ["rmse_px", "rmse px (in-sample)", 3],
+    ["n_check", "check points", 0], ["n_control", "control points", 0],
+    ["gt_rmse_px", "gt rmse px", 3], ["sdi", "sdi", 3],
     ["inlier_count", "inliers", 0], ["match_count", "matches", 0],
     ["coverage_pct", "coverage %", 1], ["dispersion_cv", "dispersion cv", 2],
     ["runtime_s", "runtime s", 2], ["model_type", "model", null]
@@ -89,6 +93,32 @@
     card.appendChild(el("div", "l", c[1]));
     $("cards").appendChild(card);
   });
+
+  (function inlierBar() {
+    // The plan's >85% bar. A miss is shown as a miss: hiding it is the one thing this
+    // page exists not to do.
+    var pass = M.inlier_ratio_pass;
+    if (pass === undefined) { pass = null; }
+    if (pass === null && known(M.inlier_ratio) && known(M.inlier_ratio_target)) {
+      pass = M.inlier_ratio >= M.inlier_ratio_target;
+    }
+    var card = el("div", "card" + (pass === null ? " none" : (pass ? "" : " failflag")));
+    card.style.gridColumn = "1 / -1";
+    card.title = "inlier_ratio " + (known(M.inlier_ratio) ? M.inlier_ratio : "unknown") +
+                 " vs plan target " + (known(M.inlier_ratio_target) ? M.inlier_ratio_target : "unknown");
+    var shown = num(M.inlier_ratio, 4);
+    card.appendChild(el("div", "v", (pass === null ? "—" : (pass ? "PASS" : "FAIL")) + "  " +
+                        (shown === null ? "—" : shown)));
+    card.appendChild(el("div", "l", "inlier ratio vs plan target " +
+                        (known(M.inlier_ratio_target) ? M.inlier_ratio_target : "—")));
+    $("cards").appendChild(card);
+  }());
+
+  if (known(M.check_status) && M.check_status !== "ok") {
+    $("banners").appendChild(el("div", "warn", "no held-out rmse · check_status=" +
+      M.check_status + " — every match was used as a control point, so rmse px is " +
+      "in-sample and must not be quoted as accuracy."));
+  }
 
   (function stages() {
     var s = M.stage_s, box = $("stages");
@@ -110,19 +140,25 @@
                  masked_invalid: "s-masked_invalid" };
   (function uniformity() {
     var counts = M.cell_counts, states = M.cell_states, n = M.grid_n, box = $("ugrid");
-    if (!counts || !n) { box.appendChild(el("div", "note", "no uniformity grid reported")); return; }
-    if (counts.length !== n * n) {
-      box.appendChild(el("div", "note", "cell_counts has " + counts.length + " cells, grid_n=" + n));
+    // The grid is rows x cols. geometry.uniformity.grid_shape keeps cells near-square on a
+    // non-square source, so 400x1200 at grid_n=4 is 4 rows by 12 columns and an n*n test
+    // would drop the whole grid. grid_n is the fallback for runs written before
+    // grid_rows/grid_cols existed.
+    var rows = M.grid_rows ? M.grid_rows : n, cols = M.grid_cols ? M.grid_cols : n;
+    if (!counts || (!n && !cols)) { box.appendChild(el("div", "note", "no uniformity grid reported")); return; }
+    if (counts.length !== rows * cols) {
+      box.appendChild(el("div", "note", "cell_counts has " + counts.length + " cells, grid is " +
+                     rows + "x" + cols + " which needs " + (rows * cols)));
       return;
     }
     var max = 1, i;
     for (i = 0; i < counts.length; i++) { if (typeof counts[i] === "number" && counts[i] > max) { max = counts[i]; } }
     var g = el("div", "ugrid");
-    g.style.gridTemplateColumns = "repeat(" + n + ",1fr)";
-    for (i = 0; i < n * n; i++) {
+    g.style.gridTemplateColumns = "repeat(" + cols + ",1fr)";
+    for (i = 0; i < rows * cols; i++) {
       var st = (states && states[i]) ? String(states[i]) : "unknown";
       var c = el("div", "cell " + (STATES[st] || "s-unknown"));
-      c.title = "cell " + i + " (col " + (i % n) + ", row " + Math.floor(i / n) + ") · " + st +
+      c.title = "cell " + i + " (col " + (i % cols) + ", row " + Math.floor(i / cols) + ") · " + st +
                 " · count " + (known(counts[i]) ? counts[i] : "unknown");
       if (st === "populated") {
         c.textContent = known(counts[i]) ? counts[i] : "?";
@@ -143,6 +179,8 @@
       leg.appendChild(s);
     });
     box.appendChild(leg);
+    box.appendChild(el("div", "note", "grid " + rows + " rows x " + cols + " cols · " +
+                   (known(M.sdi_definition) ? M.sdi_definition : "sdi_definition not reported")));
   }());
 
   (function prov() {
@@ -150,7 +188,18 @@
     var lines = [["run", D.run_path], ["run at", p.timestamp_utc],
                  ["git", p.git_sha ? String(p.git_sha).slice(0, 10) + (p.git_dirty ? " (dirty)" : "") : null],
                  ["illumination", M.illum_mode], ["phase congruency", M.pc_status],
-                 ["canonicalised", known(M.canonicalised) ? String(M.canonicalised) : null]];
+                 ["canonicalised", known(M.canonicalised) ? String(M.canonicalised) : null],
+                 ["match arm", M.match_method_resolved], ["arm chosen because", M.match_method_reason],
+                 ["verify init", M.verify_init_source], ["mask fill", M.mask_fill],
+                 ["clahe applied", known(M.clahe_applied) ? String(M.clahe_applied) : null],
+                 ["seed applied", known(M.seed_applied) ? String(M.seed_applied) : null],
+                 ["seed reason", M.seed_reason],
+                 ["tps", known(M.tps_status) ? M.tps_status : null],
+                 ["tps check rmse before/after", (known(M.tps_check_rmse_before_px) ||
+                    known(M.tps_check_rmse_after_px))
+                    ? (num(M.tps_check_rmse_before_px, 4) || "—") + " -> " +
+                      (num(M.tps_check_rmse_after_px, 4) || "—")
+                    : null]];
     lines.forEach(function (pair) {
       $("prov").appendChild(el("div", null, pair[0] + ": " + (known(pair[1]) ? pair[1] : "not reported")));
     });

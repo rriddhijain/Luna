@@ -26,7 +26,27 @@ GOOD = {
     "stage_s": {"load": 0.04, "match": 2.8, "refine": 0.08},
     "cell_counts": [7, 0, 3, 0],
     "cell_states": ["populated", "insufficient_texture", "populated", "masked_invalid"],
+    # P1.4 and the plan's bar. GOOD deliberately misses the 0.85 target: a run that
+    # misses must be shown missing it.
+    "check_rmse_px": 0.731, "check_rmse_all_px": 1.02, "check_p90_px": 1.44,
+    "check_status": "ok", "n_check": 39, "n_control": 158,
+    "inlier_ratio_pass": False, "inlier_ratio_target": 0.85, "sdi": 0.5613,
+    "sdi_definition": "sdi = (coverage_pct/100) * 1/(1 + dispersion_cv)",
+    "tps_status": "rejected_no_improvement", "tps_n_control": 31,
+    "tps_check_rmse_before_px": 1.02, "tps_check_rmse_after_px": 1.19,
+    "match_method_resolved": "rift",
+    "match_method_reason": "delta sun azimuth is 100.0 deg, over the 20 deg bar",
+    "verify_init_source": "cascade_transform", "mask_fill": "reflect",
+    "clahe_applied": False, "seed_applied": False,
+    "seed_reason": "no seed given: nobody seeded",
 }
+
+# A non-square source: geometry.uniformity.grid_shape gives 2 rows by 6 columns, and an
+# n*n test on grid_n would drop this grid from every surface that draws it.
+NONSQUARE = dict(GOOD, grid_n=2, grid_rows=2, grid_cols=6,
+                 cell_counts=[4, 0, 2, 1, 0, 5, 3, 2, 0, 1, 6, 0],
+                 cell_states=["populated", "masked_invalid"] * 6,
+                 inlier_ratio=0.91, inlier_ratio_pass=True, check_rmse_px=0.44)
 THIN = dict(GOOD, model_type="homography", rmse_px=0.00004, inlier_count=5,
             rmse_trustworthy=False,
             rmse_warning="5 inliers for a 4-point model (redundancy 1): rmse_px is near-zero "
@@ -188,3 +208,63 @@ def test_dashboard_links_generated_viewers(runs_root, tmp_path):
     alpha = next(r for r in payload["runs"] if r["name"] == "alpha_run")
     assert alpha["viewer"] == "alpha_run/viewer.html"
     assert os.path.exists(runs_root / "alpha_run" / "viewer.html")
+
+
+def test_the_held_out_numbers_reach_the_payload(runs_root, tmp_path):
+    text = open(build_dashboard(runs_root, tmp_path / "index.html"), encoding="utf-8").read()
+    payload = json.loads(re.search(r'id="dash-data" type="application/json">(.*?)</script>',
+                                   text, re.S).group(1))
+    alpha = next(r for r in payload["runs"] if r["name"] == "alpha_run")
+    for key in ("check_rmse_px", "check_rmse_all_px", "check_p90_px", "check_status",
+                "n_check", "n_control", "sdi", "sdi_definition", "inlier_ratio_pass",
+                "inlier_ratio_target", "tps_status", "tps_check_rmse_before_px",
+                "tps_check_rmse_after_px", "tps_n_control", "match_method_resolved",
+                "match_method_reason", "verify_init_source", "mask_fill", "clahe_applied",
+                "seed_applied"):
+        assert alpha[key] == GOOD[key], key
+    # The held-out number is a column, and rmse_px is labelled in-sample beside it.
+    assert '["check_rmse_px","check rmse px (held out)",1]' in text
+    assert '["rmse_px","rmse px (in-sample)",1]' in text
+
+
+def test_the_inlier_ratio_miss_survives_to_the_page(runs_root, tmp_path):
+    text = open(build_dashboard(runs_root, tmp_path / "index.html"), encoding="utf-8").read()
+    assert "inlier ratio FAIL (0.264 vs 0.85)" in text        # noscript, before any JS
+    assert '["inlier_ratio_pass","ratio vs plan",0]' in text  # and as its own column
+
+
+def test_a_non_square_grid_is_projected_and_drawn_by_shape_not_by_n(runs_root, tmp_path):
+    _run(runs_root, "nonsquare_run", NONSQUARE)
+    text = open(build_dashboard(runs_root, tmp_path / "index.html"), encoding="utf-8").read()
+    payload = json.loads(re.search(r'id="dash-data" type="application/json">(.*?)</script>',
+                                   text, re.S).group(1))
+    ns = next(r for r in payload["runs"] if r["name"] == "nonsquare_run")
+    assert (ns["grid_rows"], ns["grid_cols"]) == (2, 6)
+    assert len(ns["cell_counts"]) == 12
+    # The renderer must take the shape, not grid_n: 12 cells against grid_n=2 used to
+    # print an error string where the coverage grid belongs.
+    assert "grid(row.cell_counts, row.cell_states, row.grid_n, row.grid_rows, row.grid_cols)" in text
+    assert "counts.length !== n*n" not in text
+    assert 'g.style.gridTemplateColumns = "repeat("+cols+",1fr)"' in text
+
+
+def test_the_viewer_grid_reads_rows_and_cols(runs_root, tmp_path):
+    app = open(os.path.join(VIEWER_DIR, "app.js"), encoding="utf-8").read()
+    assert "counts.length !== n * n" not in app
+    assert "counts.length !== rows * cols" in app
+    assert 'g.style.gridTemplateColumns = "repeat(" + cols + ",1fr)"' in app
+    # And the headline card is the held-out number, with rmse_px labelled in-sample.
+    assert '["check_rmse_px", "check rmse px (held out)", 3]' in app
+    assert '["rmse_px", "rmse px (in-sample)", 3]' in app
+    assert "inlier ratio vs plan target" in app
+
+
+def test_the_viewer_payload_carries_the_evidence_keys(runs_root, tmp_path):
+    _run(runs_root, "nonsquare_run", NONSQUARE)
+    out = build_viewer(runs_root / "nonsquare_run")
+    payload = json.loads(re.search(r'id="samanvay-run" type="application/json">(.*?)</script>',
+                                   open(out, encoding="utf-8").read(), re.S).group(1))
+    m = payload["metrics"]
+    assert (m["grid_rows"], m["grid_cols"]) == (2, 6)
+    assert m["check_rmse_px"] == 0.44 and m["inlier_ratio_pass"] is True
+    assert m["sdi_definition"].startswith("sdi = ")

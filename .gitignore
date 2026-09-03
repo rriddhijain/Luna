@@ -1,9 +1,12 @@
 .venv/
 __pycache__/
 *.pyc
-runs/
-data/
 .pytest_cache/
+.cache/
+
+# Mission data is never redistributed here. scripts/download_pairs.py fetches it from
+# the agencies' own archives; docs/DATA.md is the path. See README → Data and licensing.
+data/
 
 # Fixture rasters regenerate byte-identically from a fixed seed in ~7 s:
 #   samanvay fixture --out-dir fixtures/synth_pair_A
@@ -11,4 +14,16 @@ data/
 # 30 MB of derivable binary does not belong in git. The ground truth that is NOT
 # derivable — gt.json, the sidecars, the per-fixture READMEs — is tracked.
 fixtures/**/*.tif
-.cache/
+
+# Run outputs. The rasters and the report HTML are megabytes and are regenerable; the
+# four evidence files are kilobytes and are the only way a clone can check a number we
+# quote. Ignoring runs/ wholesale meant every figure in the README was unverifiable.
+#
+# `runs/**` then `!runs/**/` — the directories must be re-included first, because git
+# does not descend into an excluded directory and a negation inside one never fires.
+runs/**
+!runs/**/
+!runs/**/metrics.json
+!runs/**/matches.csv
+!runs/**/provenance.json
+!runs/**/transform.json

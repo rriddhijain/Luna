@@ -1,0 +1,412 @@
+{
+    "rmse_px": 0.8176668342686597,
+    "inlier_count": 5,
+    "inlier_ratio": 0.0273224043715847,
+    "coverage_pct": 31.25,
+    "dispersion_cv": 1.4832396974191326,
+    "grid_n": 4,
+    "runtime_s": 2.411,
+    "match_count": 183,
+    "mean_sigma_px": null,
+    "refined_count": 43,
+    "model_type": "homography",
+    "model_margin": 0.1,
+    "cell_counts": [
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+    ],
+    "cell_states": [
+        "insufficient_texture",
+        "populated",
+        "populated",
+        "insufficient_texture",
+        "insufficient_texture",
+        "insufficient_texture",
+        "populated",
+        "populated",
+        "insufficient_texture",
+        "insufficient_texture",
+        "insufficient_texture",
+        "insufficient_texture",
+        "insufficient_texture",
+        "populated",
+        "insufficient_texture",
+        "insufficient_texture"
+    ],
+    "gt_rmse_px": 244.04917565080956,
+    "gt_bias_x": 95.05202600882711,
+    "gt_bias_y": 102.6350434935239,
+    "gt_p90_px": 369.41914562776566,
+    "stage_s": {
+        "load": 0.027,
+        "coarse_init": 0.0,
+        "canonicalise": 0.097,
+        "match": 2.207,
+        "verify": 0.001,
+        "refine": 0.077,
+        "metrics": 0.003,
+        "warp": 0.001
+    },
+    "subpixel_applied": true,
+    "init_method": "geotransform",
+    "init_crs_match": true,
+    "illum_mode": "none",
+    "pc_status": "disabled",
+    "canonicalised": false,
+    "model_candidates": {
+        "homography": {
+            "rmse_px": 0.8176668342686597,
+            "rmse_common_px": 0.8176668342686597,
+            "inlier_count": 5,
+            "redundancy": 1
+        }
+    },
+    "redundancy": 1,
+    "rmse_trustworthy": false,
+    "rmse_warning": "5 inliers for a 4-point model (redundancy 1): rmse_px is near-zero by construction and must not be quoted as accuracy",
+    "models_rejected": null,
+    "verify_status": "ok",
+    "cell_info": {
+        "mode": "init_projected",
+        "grid_n": 4,
+        "method": "sift",
+        "search_margin_px": null,
+        "cells": {
+            "0": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 7,
+                "masked_frac": 0.08617644981281344,
+                "src_core": [
+                    0,
+                    0,
+                    429,
+                    429
+                ],
+                "ref_window": [
+                    52,
+                    0,
+                    487,
+                    363
+                ],
+                "search_margin_px": 72.25137952004188
+            },
+            "1": {
+                "status": "populated",
+                "attempts": 2,
+                "ratio_threshold": 0.8,
+                "count": 23,
+                "masked_frac": 0.05969322053238137,
+                "src_core": [
+                    429,
+                    0,
+                    858,
+                    429
+                ],
+                "ref_window": [
+                    224,
+                    0,
+                    705,
+                    412
+                ],
+                "search_margin_px": 80.10439698762318
+            },
+            "2": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 5,
+                "masked_frac": 0.044468771104285126,
+                "src_core": [
+                    858,
+                    0,
+                    1286,
+                    429
+                ],
+                "ref_window": [
+                    434,
+                    0,
+                    915,
+                    453
+                ],
+                "search_margin_px": 79.98169358969221
+            },
+            "3": {
+                "status": "populated",
+                "attempts": 2,
+                "ratio_threshold": 0.8,
+                "count": 21,
+                "masked_frac": 0.04755462098119441,
+                "src_core": [
+                    1286,
+                    0,
+                    1715,
+                    429
+                ],
+                "ref_window": [
+                    652,
+                    45,
+                    1024,
+                    480
+                ],
+                "search_margin_px": 72.2513795200419
+            },
+            "4": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 11,
+                "masked_frac": 0.07023434995462967,
+                "src_core": [
+                    0,
+                    429,
+                    429,
+                    858
+                ],
+                "ref_window": [
+                    4,
+                    100,
+                    460,
+                    582
+                ],
+                "search_margin_px": 80.10439698762318
+            },
+            "5": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 10,
+                "masked_frac": 0.06845757195407545,
+                "src_core": [
+                    429,
+                    429,
+                    858,
+                    858
+                ],
+                "ref_window": [
+                    181,
+                    133,
+                    672,
+                    624
+                ],
+                "search_margin_px": 81.63086895063554
+            },
+            "6": {
+                "status": "populated",
+                "attempts": 2,
+                "ratio_threshold": 0.8,
+                "count": 26,
+                "masked_frac": 0.0796516567544605,
+                "src_core": [
+                    858,
+                    429,
+                    1286,
+                    858
+                ],
+                "ref_window": [
+                    392,
+                    174,
+                    882,
+                    665
+                ],
+                "search_margin_px": 81.60701782621348
+            },
+            "7": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 7,
+                "masked_frac": 0.06262734934063606,
+                "src_core": [
+                    1286,
+                    429,
+                    1715,
+                    858
+                ],
+                "ref_window": [
+                    603,
+                    217,
+                    1024,
+                    698
+                ],
+                "search_margin_px": 80.10439698762318
+            },
+            "8": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 7,
+                "masked_frac": 0.12007385138226259,
+                "src_core": [
+                    0,
+                    858,
+                    429,
+                    1286
+                ],
+                "ref_window": [
+                    0,
+                    311,
+                    419,
+                    792
+                ],
+                "search_margin_px": 79.98169358969226
+            },
+            "9": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 5,
+                "masked_frac": 0.11650110014595996,
+                "src_core": [
+                    429,
+                    858,
+                    858,
+                    1286
+                ],
+                "ref_window": [
+                    140,
+                    344,
+                    631,
+                    834
+                ],
+                "search_margin_px": 81.60701782621348
+            },
+            "10": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 11,
+                "masked_frac": 0.07587998951873526,
+                "src_core": [
+                    858,
+                    858,
+                    1286,
+                    1286
+                ],
+                "ref_window": [
+                    351,
+                    385,
+                    841,
+                    875
+                ],
+                "search_margin_px": 81.48431442828254
+            },
+            "11": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 7,
+                "masked_frac": 0.05136374528897893,
+                "src_core": [
+                    1286,
+                    858,
+                    1715,
+                    1286
+                ],
+                "ref_window": [
+                    563,
+                    427,
+                    1019,
+                    908
+                ],
+                "search_margin_px": 79.98169358969224
+            },
+            "12": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 6,
+                "masked_frac": 0.1323455099678876,
+                "src_core": [
+                    0,
+                    1286,
+                    429,
+                    1715
+                ],
+                "ref_window": [
+                    0,
+                    528,
+                    370,
+                    963
+                ],
+                "search_margin_px": 72.2513795200419
+            },
+            "13": {
+                "status": "populated",
+                "attempts": 2,
+                "ratio_threshold": 0.8,
+                "count": 22,
+                "masked_frac": 0.053064262854472646,
+                "src_core": [
+                    429,
+                    1286,
+                    858,
+                    1715
+                ],
+                "ref_window": [
+                    107,
+                    555,
+                    589,
+                    1012
+                ],
+                "search_margin_px": 80.10439698762319
+            },
+            "14": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 5,
+                "masked_frac": 0.09100167745027558,
+                "src_core": [
+                    858,
+                    1286,
+                    1286,
+                    1715
+                ],
+                "ref_window": [
+                    318,
+                    596,
+                    799,
+                    1024
+                ],
+                "search_margin_px": 79.98169358969221
+            },
+            "15": {
+                "status": "populated",
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 10,
+                "masked_frac": 0.08144924228840313,
+                "src_core": [
+                    1286,
+                    1286,
+                    1715,
+                    1715
+                ],
+                "ref_window": [
+                    536,
+                    645,
+                    970,
+                    1024
+                ],
+                "search_margin_px": 72.2513795200419
+            }
+        }
+    },
+    "gt_source": "gt.json"
+}

@@ -1,0 +1,92 @@
+{
+    "timestamp_utc": "2026-08-29T08:48:10.398807+00:00",
+    "git_sha": "b2aa9b30077468fad77f954dc897736635cb8f5c",
+    "git_branch": "main",
+    "git_dirty": true,
+    "seed": null,
+    "config": {
+        "seed": null,
+        "grid_n": 4,
+        "halo_px": 64,
+        "nodata": null,
+        "warp_interp": "cubic",
+        "cache": {
+            "enabled": true,
+            "dir": ".cache/samanvay"
+        },
+        "photometry": {
+            "canonicalise": true,
+            "phase_congruency": false,
+            "photometric_model": "lommel_seeliger",
+            "dem_path": null
+        },
+        "match": {
+            "method": "sift",
+            "coarse_init": true,
+            "uniformity": true,
+            "min_matches": 5,
+            "max_matches": 50
+        },
+        "geometry": {
+            "model": "auto",
+            "model_margin": 0.1,
+            "subpixel": true,
+            "grid_n": 4
+        },
+        "refine": {}
+    },
+    "package_versions": {
+        "numpy": "2.2.6",
+        "scipy": "1.17.1",
+        "rasterio": "1.4.4",
+        "scikit-image": "0.26.0",
+        "matplotlib": "3.11.1",
+        "click": "8.5.0",
+        "pyyaml": "6.0.3",
+        "pytest": "9.1.1",
+        "opencv-python-headless": "5.0.0.93",
+        "samanvay": "0.1.0"
+    },
+    "inputs": {
+        "source": {
+            "path": "fixtures/synth_pair_A/source.tif",
+            "size_bytes": 5888245,
+            "product_id": "synth_source",
+            "meta_source": {
+                "product_id": "sidecar",
+                "instrument": "sidecar",
+                "gsd_m": "sidecar",
+                "sun_az_deg": "sidecar",
+                "sun_el_deg": "sidecar",
+                "incidence_deg": "sidecar",
+                "emission_deg": "sidecar",
+                "phase_deg": "unknown",
+                "geotransform": "sidecar",
+                "crs": "sidecar",
+                "shape": "geotiff",
+                "dtype": "geotiff",
+                "nodata": "unknown"
+            }
+        },
+        "reference": {
+            "path": "fixtures/synth_pair_A/reference.tif",
+            "size_bytes": 2099291,
+            "product_id": "synth_reference",
+            "meta_source": {
+                "product_id": "sidecar",
+                "instrument": "sidecar",
+                "gsd_m": "sidecar",
+                "sun_az_deg": "sidecar",
+                "sun_el_deg": "sidecar",
+                "incidence_deg": "sidecar",
+                "emission_deg": "sidecar",
+                "phase_deg": "unknown",
+                "geotransform": "sidecar",
+                "crs": "sidecar",
+                "shape": "geotiff",
+                "dtype": "geotiff",
+                "nodata": "unknown"
+            }
+        }
+    }
+}

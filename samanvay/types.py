@@ -32,11 +32,24 @@ class MatchSet:           # ① produces · ⑥ consumes · ④ renders
 
 @dataclass
 class Registration:       # ⑥ produces · ③ warps with it · ④ displays it
-    model_type: str       # "similarity" | "affine" | "homography"
-    params: np.ndarray    # 3x3
+    model_type: str       # "similarity" | "affine" | "homography", optionally "+tps"
+    params: np.ndarray    # 3x3 — the GLOBAL model, always. `warp` is a residual on top.
     init_params: np.ndarray
     inliers: np.ndarray   # (N,) bool
     residuals: np.ndarray # (N,2) float64, in source pixels
     sigma: np.ndarray     # (N,) float64, per-point uncertainty
-    metrics: dict         # rmse_px, inlier_count, inlier_ratio,
-                          # coverage_pct, dispersion_cv, grid_n, runtime_s
+    metrics: dict         # rmse_px, check_rmse_px, inlier_count, inlier_ratio,
+                          # coverage_pct, dispersion_cv, sdi, grid_n, runtime_s
+
+    # P1.4 — the control/check split. 0 = control (the fit saw it), 1 = check (held out
+    # entirely). check_rmse_px is computed ONLY over role == 1, which is the only error
+    # figure in this repo that is not measured on the fit's own sample. None means no
+    # split was made (too few matches), and check_rmse_px is then null, never optimistic.
+    roles: np.ndarray = None      # (N,) uint8
+
+    # Optional non-rigid residual applied AFTER `params`, in the SOURCE frame:
+    #     src_predicted = warp.apply(inv(params) @ ref)
+    # None means the registration is purely projective. Everything that reads `params`
+    # as a 3x3 keeps working unchanged; only code that wants the full model consults
+    # this, via geometry.tps.pullback(params, ref_xy, warp).
+    warp: object = None           # geometry.tps.ThinPlateSpline | None

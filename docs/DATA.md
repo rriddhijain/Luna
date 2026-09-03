@@ -206,12 +206,42 @@ Neither has been done yet.
 
 Stated plainly, because you will be the first person to hit these:
 
-- **No real Chandrayaan-2 or LRO product has been through this pipeline.** The loader,
-  PDS adapter and exports are written and unit-tested; they have never met a real product.
+- ~~**No real Chandrayaan-2 or LRO product has been through this pipeline.**~~
+  **Corrected 2026-09-02: false.** Real LROC NAC ↔ NAC pairs (Apollo 16, 888 x 11952
+  strips at 2 m GSD, Δsun 4° / 85° / 115°), Chandrayaan-2 ↔ Chandrayaan-2 and
+  Chandrayaan-2 ↔ LRO WAC pairs have all been registered. What is still true, and
+  matters more: **none of them has ground truth.** `gt_rmse_px` is `null` on every real
+  run, so §7's advice below is the whole of how you judge one.
 - **Gigapixel strips are untested.** Tiled reading and the canonicalisation cache exist,
-  but OHRC-scale inputs have never been run.
+  but OHRC-scale inputs have never been run. The largest real input registered so far is
+  10.6 Mpx per image, at 195 s wall clock.
 - **The ISIS3 control network has never been opened by an ISIS3 binary.**
 - **PDS3/PDS4 label parsing is best-effort** against the alias tables, not against real
   ISSDC products.
 
 Expect the first real pair to need tuning. That is the work, not a failure.
+
+
+---
+
+## 10. Attribution, and what this repository does not contain
+
+**No mission data is redistributed here.** `data/` is gitignored and the only rasters under
+version control are the synthetic fixtures this project renders itself (`synth/`, seed 0,
+byte-reproducible). Fetch real products from the agencies' own archives —
+`scripts/download_pairs.py` does the LROC NAC case end to end — and keep their terms with
+them.
+
+| products | credit | archive |
+|---|---|---|
+| LROC NAC / WAC imagery, LROC-derived DTMs, SLDEM | **NASA / Goddard Space Flight Center / Arizona State University** | PDS Cartography and Imaging Sciences Node (LROC PDS archive); ODE for search |
+| Chandrayaan-2 OHRC / TMC-2 / IIRS | **ISRO / Physical Research Laboratory** | ISSDC PRADAN, under ISRO's data policy |
+| SELENE / Kaguya | **JAXA** | JAXA / SELENE data archive |
+
+Each agency's terms apply to its own data. SAMANVAY's own Apache-2.0 licence
+([`LICENSE`](../LICENSE)) covers the **code only**, and nothing in it grants a right to
+redistribute mission data.
+
+If you publish a result from a real pair, credit the products it was computed from — and
+carry `provenance.json` with it, which already records the input paths, product ids and
+per-field metadata sources.

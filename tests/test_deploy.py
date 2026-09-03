@@ -318,3 +318,39 @@ def test_every_makefile_target_is_syntactically_runnable(target):
     result = subprocess.run(["make", "-n", target], capture_output=True, text=True, cwd=REPO)
     assert result.returncode == 0, f"make -n {target}: {result.stderr}"
     assert result.stdout.strip(), f"make -n {target} expands to nothing"
+
+
+# ------------------------------------------------------------- the sweep cache guard
+
+def test_bench_runs_the_sweep_with_the_cache_off():
+    """`make bench` and the `bench` compose service must disable the canonicalisation cache.
+
+    Measured 2026-09-03: `pipeline/stages.py::_canonicalise_cached` keys the cache on
+    (product_id, photometry params, file size, int(mtime), shape). Every fixture in
+    fixtures/dsun_sweep declares product_id "synth_source", every source raster is 1474265
+    bytes, and `python -m synth.sweep` writes several inside one wall-clock second — so
+    two pairs collide on the key and the second reads the first one's phase congruency.
+    Reproduced on two copies of dsun_60 and dsun_70 with their mtimes forced equal and a
+    private cache dir: cache on, both report gt_rmse 2.1098 px / 73 inliers / 153 matches;
+    cache off, the second reports its own 3.5141 px / 49 inliers / 126 matches.
+
+    `rm -rf .cache` does NOT fix it — the harness warms the cache as it iterates, and a
+    run with .cache removed first still returned 2 of 14 rows as another pair's numbers.
+    Running the manifest through bench.harness.SWEEP_CONFIG does: measured 2026-09-03, it
+    reproduces bench/baselines.md section 1 exactly, all 14 rows distinct.
+
+    Delete this test when run_manifest() applies SWEEP_CONFIG itself and both surfaces go
+    back to the plain `python -m bench.harness --manifest` CLI.
+    """
+    makefile = _read(MAKEFILE)
+    # Stop at the next target definition, not at the next column-0 line: the recipe is
+    # interleaved with column-0 `#` comments that explain why the guard is there.
+    bench_recipe = re.search(r"^bench:.*?(?=^[A-Za-z][A-Za-z0-9_-]*:(?!=))",
+                             makefile, re.M | re.S)
+    assert bench_recipe, "no bench target in the Makefile"
+    assert "SWEEP_CONFIG" in bench_recipe.group(0), \
+        "make bench must pass bench.harness.SWEEP_CONFIG: the sweep reads another pair's numbers otherwise"
+
+    bench_service = yaml.safe_load(_read(COMPOSE))["services"]["bench"]
+    assert any("SWEEP_CONFIG" in str(part) for part in bench_service.get("command", [])), \
+        "the bench compose service must disable the cache the same way make bench does"
