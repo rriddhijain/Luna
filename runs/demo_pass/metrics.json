@@ -1,40 +1,40 @@
 {
-    "rmse_px": 1.2601738240523066,
-    "inlier_count": 64,
-    "inlier_ratio": 0.29357798165137616,
-    "inlier_ratio_pass": false,
+    "rmse_px": 0.608880848532077,
+    "inlier_count": 291,
+    "inlier_ratio": 0.9356913183279743,
+    "inlier_ratio_pass": true,
     "inlier_ratio_target": 0.85,
     "coverage_pct": 100.0,
-    "dispersion_cv": 0.7288689868556626,
-    "sdi": 0.5784128280412532,
+    "dispersion_cv": 0.23263868784897335,
+    "sdi": 0.8112677379492756,
     "sdi_definition": "sdi = (coverage_pct/100) * 1/(1 + dispersion_cv)",
     "grid_n": 4,
     "grid_rows": 4,
     "grid_cols": 4,
-    "runtime_s": 10.736,
-    "match_count": 218,
-    "mean_sigma_px": 1.529393244906665,
-    "sigma_known_count": 113,
-    "refined_count": 113,
-    "model_type": "homography+tps",
+    "runtime_s": 2.795,
+    "match_count": 311,
+    "mean_sigma_px": 0.18132574256905679,
+    "sigma_known_count": 274,
+    "refined_count": 274,
+    "model_type": "homography",
     "model_margin": 0.1,
     "cell_counts": [
-        1,
-        2,
-        9,
-        3,
-        2,
-        6,
-        10,
-        1,
-        1,
-        2,
-        4,
-        4,
-        2,
-        3,
-        9,
-        5
+        14,
+        23,
+        16,
+        16,
+        17,
+        24,
+        15,
+        14,
+        18,
+        17,
+        24,
+        25,
+        15,
+        25,
+        14,
+        14
     ],
     "cell_states": [
         "populated",
@@ -54,43 +54,43 @@
         "populated",
         "populated"
     ],
-    "gt_rmse_px": 2.9287054567839337,
-    "gt_bias_x": -0.8401839691991462,
-    "gt_bias_y": -1.9454287031950543,
-    "gt_p90_px": 3.9545106038797657,
-    "check_rmse_px": 1.5712308090704932,
-    "check_rmse_all_px": 6.729315016588273,
-    "check_p90_px": 9.57279612735033,
-    "check_outlier_frac": 0.5652173913043479,
+    "gt_rmse_px": 0.15745958674258198,
+    "gt_bias_x": 0.009260570633085063,
+    "gt_bias_y": 0.04991602000361503,
+    "gt_p90_px": 0.2541635293833748,
+    "check_rmse_px": 0.4429716340146996,
+    "check_rmse_all_px": 0.8282763691292312,
+    "check_p90_px": 0.6166133609831217,
+    "check_outlier_frac": 0.01851851851851849,
     "check_fraction": 0.2,
-    "tps_check_rmse_before_px": 6.9059116324303265,
-    "tps_check_rmse_after_px": 6.729315016588273,
-    "n_check": 23,
-    "n_control": 132,
-    "n_check_inlier": 10,
-    "tps_n_control": 54,
+    "tps_check_rmse_before_px": 0.8282763691292312,
+    "tps_check_rmse_after_px": 0.9257997948402664,
+    "n_check": 54,
+    "n_control": 244,
+    "n_check_inlier": 53,
+    "tps_n_control": 238,
     "check_status": "ok",
-    "tps_status": "applied",
-    "tps_applied": true,
+    "tps_status": "rejected_no_improvement",
+    "tps_applied": false,
     "stage_s": {
-        "load": 0.04,
+        "load": 0.052,
         "coarse_init": 0.0,
-        "canonicalise": 0.016,
-        "match": 10.42,
-        "verify": 0.007,
-        "refine": 0.252,
-        "metrics": 0.006,
-        "warp": 2.379
+        "canonicalise": 0.803,
+        "match": 1.588,
+        "verify": 0.011,
+        "refine": 0.341,
+        "metrics": 0.003,
+        "warp": 0.001
     },
-    "delta_sun_az_deg": 100.0,
+    "delta_sun_az_deg": 10.0,
     "match_method_requested": "auto",
-    "match_method_resolved": "rift",
-    "match_method_reason": "delta sun azimuth is 100.0 deg, at or over the 20 deg bar, so the rift arm was chosen",
-    "match_method_recommended": "rift",
-    "phase_congruency_resolved": true,
-    "phase_congruency_reason": "the rift descriptor reads the phase-congruency map",
-    "clahe_resolved": false,
-    "clahe_reason": "rift is contrast-invariant by construction, so CLAHE would only add a spatially varying non-linearity",
+    "match_method_resolved": "sift",
+    "match_method_reason": "delta sun azimuth is 10.0 deg, under the 20 deg bar, so the sift arm was chosen",
+    "match_method_recommended": "sift",
+    "phase_congruency_resolved": false,
+    "phase_congruency_reason": "the sift descriptor never reads the phase-congruency map",
+    "clahe_resolved": true,
+    "clahe_reason": "sift matches on intensity, where local contrast is what the descriptor has to work with",
     "seed_applied": false,
     "seed_applied_to": null,
     "seed_reason": "no seed given: nobody seeded",
@@ -98,51 +98,51 @@
     "subpixel_applied": true,
     "init_method": "geotransform",
     "init_crs_match": true,
-    "illum_mode": "empirical",
-    "pc_status": "computed",
-    "clahe_applied": false,
+    "illum_mode": "dem_lowfreq",
+    "pc_status": "disabled",
+    "clahe_applied": true,
     "clahe_clip": 2.0,
     "clahe_grid": 8,
     "mask_fill": "reflect",
-    "mask_fill_px": 32343,
-    "phase_congruency_requested": true,
+    "mask_fill_px": 0,
+    "phase_congruency_requested": false,
     "illum_scale": "auto",
-    "illum_scale_reason": null,
+    "illum_scale_reason": "illum_scale=auto, pose untrusted",
     "dem_transform": "metadata_geotransform",
-    "dem_align": null,
-    "dem_coverage_frac": null,
-    "pose_uncertainty_px": null,
-    "pose_trusted_reason": null,
+    "dem_align": "geotransform",
+    "dem_coverage_frac": 0.9997,
+    "pose_uncertainty_px": "unknown",
+    "pose_trusted_reason": "pose uncertainty unknown; a stated geotransform is not evidence",
     "dem_transform_fallback": null,
     "canonicalised": true,
     "model_candidates": {
         "similarity": {
-            "rmse_px": 1.7931566380950363,
-            "rmse_common_px": 3.8224519132873263,
-            "inlier_count": 35,
-            "redundancy": 33
+            "rmse_px": 1.4023621288146595,
+            "rmse_common_px": 2.2607656925354656,
+            "inlier_count": 192,
+            "redundancy": 190
         },
         "affine": {
-            "rmse_px": 1.7639920042988952,
-            "rmse_common_px": 3.421940120010786,
-            "inlier_count": 32,
-            "redundancy": 29
+            "rmse_px": 1.6546607240078515,
+            "rmse_common_px": 2.141423456577027,
+            "inlier_count": 209,
+            "redundancy": 206
         },
         "homography": {
-            "rmse_px": 1.834892946391765,
-            "rmse_common_px": 1.834892946391765,
-            "inlier_count": 54,
-            "redundancy": 50
+            "rmse_px": 0.6399982874538955,
+            "rmse_common_px": 0.6399982874538955,
+            "inlier_count": 238,
+            "redundancy": 234
         }
     },
-    "redundancy": 50,
+    "redundancy": 234,
     "rmse_trustworthy": true,
     "rmse_warning": null,
     "models_rejected": null,
     "verify_status": "ok",
     "verify_reason": null,
-    "init_gated_out": 63,
-    "init_gate_px": 111.1183901172709,
+    "init_gated_out": 13,
+    "init_gate_px": 59.07841612178293,
     "init_gate_fallback": false,
     "verify_init_source": "cascade_transform",
     "cell_info": {
@@ -151,379 +151,379 @@
         "grid_rows": 4,
         "grid_cols": 4,
         "anms": true,
-        "method": "rift",
+        "method": "sift",
         "search_margin_px": 64.0,
-        "ratio_base": 0.9,
-        "strict_score_min": 0.09999999999999998,
-        "putative_count": 218,
-        "strict_count": 172,
-        "relaxed_cells": 1,
+        "ratio_base": 0.75,
+        "strict_score_min": 0.25,
+        "putative_count": 311,
+        "strict_count": 311,
+        "relaxed_cells": 0,
         "cells": {
             "0": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 5,
+                "ratio_threshold": 0.75,
+                "count": 16,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 5,
-                "masked_frac": 0.010786968294174163,
+                "count_strict": 16,
+                "masked_frac": 0.011092671849069789,
                 "src_core": [
                     0,
                     0,
-                    214,
-                    214
+                    107,
+                    107
                 ],
                 "ref_window": [
-                    59,
                     0,
-                    509,
-                    406
+                    0,
+                    319,
+                    271
                 ],
                 "search_margin_px": 64.0
             },
             "1": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 8,
+                "ratio_threshold": 0.75,
+                "count": 23,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 8,
-                "masked_frac": 0.009910888937187569,
+                "count_strict": 23,
+                "masked_frac": 0.013712988033889423,
                 "src_core": [
-                    214,
+                    107,
                     0,
-                    429,
-                    214
+                    214,
+                    107
                 ],
                 "ref_window": [
-                    207,
+                    33,
                     0,
-                    721,
-                    445
+                    423,
+                    290
                 ],
                 "search_margin_px": 64.0
             },
             "2": {
                 "status": "populated",
-                "attempts": 2,
-                "ratio_threshold": 0.95,
-                "count": 49,
+                "attempts": 1,
+                "ratio_threshold": 0.75,
+                "count": 17,
                 "anms": null,
-                "relaxed": true,
-                "count_strict": 3,
-                "masked_frac": 0.011062812432079983,
+                "relaxed": false,
+                "count_strict": 17,
+                "masked_frac": 0.013499480789200415,
                 "src_core": [
-                    429,
+                    214,
                     0,
-                    644,
-                    214
+                    322,
+                    107
                 ],
                 "ref_window": [
-                    418,
-                    21,
-                    932,
-                    483
+                    139,
+                    0,
+                    512,
+                    308
                 ],
                 "search_margin_px": 64.0
             },
             "3": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 9,
+                "ratio_threshold": 0.75,
+                "count": 17,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 9,
-                "masked_frac": 0.010131889247969254,
+                "count_strict": 17,
+                "masked_frac": 0.011354703467551752,
                 "src_core": [
-                    644,
+                    322,
                     0,
-                    858,
-                    214
+                    429,
+                    107
                 ],
                 "ref_window": [
-                    630,
-                    60,
-                    1024,
-                    510
+                    246,
+                    0,
+                    512,
+                    316
                 ],
                 "search_margin_px": 64.0
             },
             "4": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 8,
+                "ratio_threshold": 0.75,
+                "count": 18,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 8,
-                "masked_frac": 0.00988915453162356,
+                "count_strict": 18,
+                "masked_frac": 0.00978251375665997,
                 "src_core": [
                     0,
-                    214,
-                    214,
-                    429
+                    107,
+                    107,
+                    214
                 ],
                 "ref_window": [
-                    22,
-                    102,
-                    484,
-                    616
+                    0,
+                    0,
+                    311,
+                    377
                 ],
                 "search_margin_px": 64.0
             },
             "5": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 15,
+                "ratio_threshold": 0.75,
+                "count": 25,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 15,
-                "masked_frac": 0.011141157382368849,
+                "count_strict": 25,
+                "masked_frac": 0.013450956415407458,
                 "src_core": [
+                    107,
+                    107,
                     214,
-                    214,
-                    429,
-                    429
+                    214
                 ],
                 "ref_window": [
-                    170,
-                    129,
-                    695,
-                    655
+                    14,
+                    0,
+                    416,
+                    395
                 ],
                 "search_margin_px": 64.0
             },
             "6": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 25,
+                "ratio_threshold": 0.75,
+                "count": 20,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 25,
-                "masked_frac": 0.011919956733369388,
+                "count_strict": 20,
+                "masked_frac": 0.010989961924541363,
                 "src_core": [
-                    429,
                     214,
-                    644,
-                    429
+                    107,
+                    322,
+                    214
                 ],
                 "ref_window": [
-                    382,
-                    168,
-                    907,
-                    693
+                    121,
+                    13,
+                    512,
+                    413
                 ],
                 "search_margin_px": 64.0
             },
             "7": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 7,
+                "ratio_threshold": 0.75,
+                "count": 16,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 7,
-                "masked_frac": 0.01058465550967181,
+                "count_strict": 16,
+                "masked_frac": 0.006463446589221766,
                 "src_core": [
-                    644,
-                    214,
-                    858,
-                    429
+                    322,
+                    107,
+                    429,
+                    214
                 ],
                 "ref_window": [
-                    593,
-                    206,
-                    1024,
-                    720
+                    227,
+                    32,
+                    512,
+                    420
                 ],
                 "search_margin_px": 64.0
             },
             "8": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 5,
+                "ratio_threshold": 0.75,
+                "count": 18,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 5,
-                "masked_frac": 0.009780482503803522,
+                "count_strict": 18,
+                "masked_frac": 0.012028383523710627,
                 "src_core": [
                     0,
-                    429,
                     214,
-                    644
+                    107,
+                    322
                 ],
                 "ref_window": [
                     0,
-                    312,
-                    447,
-                    826
+                    91,
+                    293,
+                    484
                 ],
                 "search_margin_px": 64.0
             },
             "9": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 13,
+                "ratio_threshold": 0.75,
+                "count": 17,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 13,
-                "masked_frac": 0.0119848566792861,
+                "count_strict": 17,
+                "masked_frac": 0.008653513326410523,
                 "src_core": [
+                    107,
                     214,
-                    429,
-                    429,
-                    644
+                    214,
+                    322
                 ],
                 "ref_window": [
-                    133,
-                    339,
-                    658,
-                    865
+                    0,
+                    99,
+                    398,
+                    502
                 ],
                 "search_margin_px": 64.0
             },
             "10": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 13,
+                "ratio_threshold": 0.75,
+                "count": 26,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 13,
-                "masked_frac": 0.01228772309356409,
+                "count_strict": 26,
+                "masked_frac": 0.011831275720164609,
                 "src_core": [
-                    429,
-                    429,
-                    644,
-                    644
+                    214,
+                    214,
+                    322,
+                    322
                 ],
                 "ref_window": [
-                    345,
-                    378,
-                    870,
-                    903
+                    102,
+                    118,
+                    503,
+                    512
                 ],
                 "search_margin_px": 64.0
             },
             "11": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 7,
+                "ratio_threshold": 0.75,
+                "count": 26,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 7,
-                "masked_frac": 0.011128015648772006,
+                "count_strict": 26,
+                "masked_frac": 0.009172724125995154,
                 "src_core": [
-                    644,
+                    322,
+                    214,
                     429,
-                    858,
-                    644
+                    322
                 ],
                 "ref_window": [
-                    556,
-                    416,
-                    1018,
-                    930
+                    209,
+                    137,
+                    512,
+                    512
                 ],
                 "search_margin_px": 64.0
             },
             "12": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 13,
+                "ratio_threshold": 0.75,
+                "count": 15,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 13,
-                "masked_frac": 0.01194427460913617,
+                "count_strict": 15,
+                "masked_frac": 0.010044545375141933,
                 "src_core": [
                     0,
-                    644,
-                    214,
-                    858
+                    322,
+                    107,
+                    429
                 ],
                 "ref_window": [
                     0,
-                    522,
-                    410,
-                    973
+                    198,
+                    274,
+                    512
                 ],
                 "search_margin_px": 64.0
             },
             "13": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 9,
+                "ratio_threshold": 0.75,
+                "count": 26,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 9,
-                "masked_frac": 0.009063247120191263,
+                "count_strict": 26,
+                "masked_frac": 0.011005327976242466,
                 "src_core": [
+                    107,
+                    322,
                     214,
-                    644,
-                    429,
-                    858
+                    429
                 ],
                 "ref_window": [
-                    108,
-                    549,
-                    622,
-                    1011
+                    0,
+                    206,
+                    379,
+                    512
                 ],
                 "search_margin_px": 64.0
             },
             "14": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 20,
+                "ratio_threshold": 0.75,
+                "count": 15,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 20,
-                "masked_frac": 0.009823951314931537,
+                "count_strict": 15,
+                "masked_frac": 0.012807199723087574,
                 "src_core": [
-                    429,
-                    644,
-                    644,
-                    858
+                    214,
+                    322,
+                    322,
+                    429
                 ],
                 "ref_window": [
-                    319,
-                    588,
-                    833,
-                    1024
+                    94,
+                    224,
+                    485,
+                    512
                 ],
                 "search_margin_px": 64.0
             },
             "15": {
                 "status": "populated",
                 "attempts": 1,
-                "ratio_threshold": 0.9,
-                "count": 12,
+                "ratio_threshold": 0.75,
+                "count": 16,
                 "anms": null,
                 "relaxed": false,
-                "count_strict": 12,
-                "masked_frac": 0.012184470259411303,
+                "count_strict": 16,
+                "masked_frac": 0.011878766704515677,
                 "src_core": [
-                    644,
-                    644,
-                    858,
-                    858
+                    322,
+                    322,
+                    429,
+                    429
                 ],
                 "ref_window": [
-                    531,
-                    626,
-                    981,
-                    1024
+                    201,
+                    243,
+                    512,
+                    512
                 ],
                 "search_margin_px": 64.0
             }
@@ -532,12 +532,12 @@
         "src_decimation": 2.0,
         "ref_decimation": 1.0,
         "src_shape": [
-            858,
-            858
+            429,
+            429
         ],
         "ref_shape": [
-            1024,
-            1024
+            512,
+            512
         ],
         "coords_frame": "level pixels: src_core is in the src_shape frame, ref_window in the ref_shape frame; scale by full_shape/src_shape (resp. ref) to reach full resolution, not by src_decimation"
     },
@@ -557,6 +557,47 @@
                 "src_decimation": 4.0,
                 "ref_decimation": 2.0,
                 "src_shape": [
+                    214,
+                    214
+                ],
+                "ref_shape": [
+                    256,
+                    256
+                ],
+                "search_margin_px": null,
+                "seeded": true,
+                "match_count": 108,
+                "inlier_count": 99,
+                "rmse_px": 0.592329335797086,
+                "rmse_trustworthy": true,
+                "method": "sift",
+                "model": "homography",
+                "status": "ok",
+                "reason": "",
+                "transform": [
+                    [
+                        0.50089553330516,
+                        -0.0896424447683452,
+                        84.60550337478487
+                    ],
+                    [
+                        0.09282951208526857,
+                        0.4925918590568388,
+                        6.977625503134631
+                    ],
+                    [
+                        2.358126233818215e-05,
+                        -1.1276941623270545e-05,
+                        0.9999814860221019
+                    ]
+                ],
+                "scale_drift": 1.0100573494855645
+            },
+            {
+                "level": 0,
+                "src_decimation": 2.0,
+                "ref_decimation": 1.0,
+                "src_shape": [
                     429,
                     429
                 ],
@@ -564,75 +605,34 @@
                     512,
                     512
                 ],
-                "search_margin_px": null,
-                "seeded": true,
-                "match_count": 146,
-                "inlier_count": 43,
-                "rmse_px": 1.7999029752379978,
-                "rmse_trustworthy": true,
-                "method": "rift",
-                "model": "affine",
-                "status": "ok",
-                "reason": "",
-                "transform": [
-                    [
-                        0.49226145616657074,
-                        -0.08555618792636192,
-                        171.04078509605446
-                    ],
-                    [
-                        0.08974512812189765,
-                        0.4887606425021793,
-                        20.0161831408098
-                    ],
-                    [
-                        0.0,
-                        0.0,
-                        1.0
-                    ]
-                ],
-                "scale_drift": 1.0034653771022126
-            },
-            {
-                "level": 0,
-                "src_decimation": 2.0,
-                "ref_decimation": 1.0,
-                "src_shape": [
-                    858,
-                    858
-                ],
-                "ref_shape": [
-                    1024,
-                    1024
-                ],
                 "search_margin_px": 64.0,
                 "seeded": true,
-                "match_count": 218,
-                "inlier_count": 90,
-                "rmse_px": 1.1817075711875682,
+                "match_count": 311,
+                "inlier_count": 293,
+                "rmse_px": 0.5332365059368395,
                 "rmse_trustworthy": true,
-                "method": "rift",
+                "method": "sift",
                 "model": "homography+tps",
                 "status": "ok",
                 "reason": "",
                 "transform": [
                     [
-                        0.49923522294634837,
-                        -0.08886666118176612,
-                        169.94438709901974
+                        0.4995653321508126,
+                        -0.0907325339220693,
+                        85.0361993463469
                     ],
                     [
-                        0.09277483738664738,
-                        0.49299384986914685,
-                        15.027255398830448
+                        0.0927821394651091,
+                        0.4903757981503898,
+                        7.229256462782873
                     ],
                     [
-                        9.201160448976571e-06,
-                        -3.833714687854912e-06,
-                        0.9999973194050015
+                        2.2358694544262908e-05,
+                        -1.539229221608615e-05,
+                        0.9999965167988359
                     ]
                 ],
-                "scale_drift": 1.012186696086991
+                "scale_drift": 1.003280854302458
             }
         ],
         "skipped_levels": [],
@@ -642,402 +642,402 @@
         "source_decimation": 2.0,
         "transform": [
             [
-                0.49923522294634837,
-                -0.08886666118176612,
-                169.94438709901974
+                0.4995653321508126,
+                -0.0907325339220693,
+                85.0361993463469
             ],
             [
-                0.09277483738664738,
-                0.49299384986914685,
-                15.027255398830448
+                0.0927821394651091,
+                0.4903757981503898,
+                7.229256462782873
             ],
             [
-                9.201160448976571e-06,
-                -3.833714687854912e-06,
-                0.9999973194050015
+                2.2358694544262908e-05,
+                -1.539229221608615e-05,
+                0.9999965167988359
             ]
         ],
-        "match_count": 218,
-        "inlier_count": 90,
+        "match_count": 311,
+        "inlier_count": 293,
         "cell_info": {
             "mode": "init_projected",
             "grid_n": 4,
             "grid_rows": 4,
             "grid_cols": 4,
             "anms": true,
-            "method": "rift",
+            "method": "sift",
             "search_margin_px": 64.0,
-            "ratio_base": 0.9,
-            "strict_score_min": 0.09999999999999998,
-            "putative_count": 218,
-            "strict_count": 172,
-            "relaxed_cells": 1,
+            "ratio_base": 0.75,
+            "strict_score_min": 0.25,
+            "putative_count": 311,
+            "strict_count": 311,
+            "relaxed_cells": 0,
             "cells": {
                 "0": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 5,
+                    "ratio_threshold": 0.75,
+                    "count": 16,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 5,
-                    "masked_frac": 0.010786968294174163,
+                    "count_strict": 16,
+                    "masked_frac": 0.011092671849069789,
                     "src_core": [
                         0,
                         0,
-                        214,
-                        214
+                        107,
+                        107
                     ],
                     "ref_window": [
-                        59,
                         0,
-                        509,
-                        406
+                        0,
+                        319,
+                        271
                     ],
                     "search_margin_px": 64.0
                 },
                 "1": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 8,
+                    "ratio_threshold": 0.75,
+                    "count": 23,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 8,
-                    "masked_frac": 0.009910888937187569,
+                    "count_strict": 23,
+                    "masked_frac": 0.013712988033889423,
                     "src_core": [
-                        214,
+                        107,
                         0,
-                        429,
-                        214
+                        214,
+                        107
                     ],
                     "ref_window": [
-                        207,
+                        33,
                         0,
-                        721,
-                        445
+                        423,
+                        290
                     ],
                     "search_margin_px": 64.0
                 },
                 "2": {
                     "status": "populated",
-                    "attempts": 2,
-                    "ratio_threshold": 0.95,
-                    "count": 49,
+                    "attempts": 1,
+                    "ratio_threshold": 0.75,
+                    "count": 17,
                     "anms": null,
-                    "relaxed": true,
-                    "count_strict": 3,
-                    "masked_frac": 0.011062812432079983,
+                    "relaxed": false,
+                    "count_strict": 17,
+                    "masked_frac": 0.013499480789200415,
                     "src_core": [
-                        429,
+                        214,
                         0,
-                        644,
-                        214
+                        322,
+                        107
                     ],
                     "ref_window": [
-                        418,
-                        21,
-                        932,
-                        483
+                        139,
+                        0,
+                        512,
+                        308
                     ],
                     "search_margin_px": 64.0
                 },
                 "3": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 9,
+                    "ratio_threshold": 0.75,
+                    "count": 17,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 9,
-                    "masked_frac": 0.010131889247969254,
+                    "count_strict": 17,
+                    "masked_frac": 0.011354703467551752,
                     "src_core": [
-                        644,
+                        322,
                         0,
-                        858,
-                        214
+                        429,
+                        107
                     ],
                     "ref_window": [
-                        630,
-                        60,
-                        1024,
-                        510
+                        246,
+                        0,
+                        512,
+                        316
                     ],
                     "search_margin_px": 64.0
                 },
                 "4": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 8,
+                    "ratio_threshold": 0.75,
+                    "count": 18,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 8,
-                    "masked_frac": 0.00988915453162356,
+                    "count_strict": 18,
+                    "masked_frac": 0.00978251375665997,
                     "src_core": [
                         0,
-                        214,
-                        214,
-                        429
+                        107,
+                        107,
+                        214
                     ],
                     "ref_window": [
-                        22,
-                        102,
-                        484,
-                        616
+                        0,
+                        0,
+                        311,
+                        377
                     ],
                     "search_margin_px": 64.0
                 },
                 "5": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 15,
+                    "ratio_threshold": 0.75,
+                    "count": 25,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 15,
-                    "masked_frac": 0.011141157382368849,
+                    "count_strict": 25,
+                    "masked_frac": 0.013450956415407458,
                     "src_core": [
+                        107,
+                        107,
                         214,
-                        214,
-                        429,
-                        429
+                        214
                     ],
                     "ref_window": [
-                        170,
-                        129,
-                        695,
-                        655
+                        14,
+                        0,
+                        416,
+                        395
                     ],
                     "search_margin_px": 64.0
                 },
                 "6": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 25,
+                    "ratio_threshold": 0.75,
+                    "count": 20,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 25,
-                    "masked_frac": 0.011919956733369388,
+                    "count_strict": 20,
+                    "masked_frac": 0.010989961924541363,
                     "src_core": [
-                        429,
                         214,
-                        644,
-                        429
+                        107,
+                        322,
+                        214
                     ],
                     "ref_window": [
-                        382,
-                        168,
-                        907,
-                        693
+                        121,
+                        13,
+                        512,
+                        413
                     ],
                     "search_margin_px": 64.0
                 },
                 "7": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 7,
+                    "ratio_threshold": 0.75,
+                    "count": 16,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 7,
-                    "masked_frac": 0.01058465550967181,
+                    "count_strict": 16,
+                    "masked_frac": 0.006463446589221766,
                     "src_core": [
-                        644,
-                        214,
-                        858,
-                        429
+                        322,
+                        107,
+                        429,
+                        214
                     ],
                     "ref_window": [
-                        593,
-                        206,
-                        1024,
-                        720
+                        227,
+                        32,
+                        512,
+                        420
                     ],
                     "search_margin_px": 64.0
                 },
                 "8": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 5,
+                    "ratio_threshold": 0.75,
+                    "count": 18,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 5,
-                    "masked_frac": 0.009780482503803522,
+                    "count_strict": 18,
+                    "masked_frac": 0.012028383523710627,
                     "src_core": [
                         0,
-                        429,
                         214,
-                        644
+                        107,
+                        322
                     ],
                     "ref_window": [
                         0,
-                        312,
-                        447,
-                        826
+                        91,
+                        293,
+                        484
                     ],
                     "search_margin_px": 64.0
                 },
                 "9": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 13,
+                    "ratio_threshold": 0.75,
+                    "count": 17,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 13,
-                    "masked_frac": 0.0119848566792861,
+                    "count_strict": 17,
+                    "masked_frac": 0.008653513326410523,
                     "src_core": [
+                        107,
                         214,
-                        429,
-                        429,
-                        644
+                        214,
+                        322
                     ],
                     "ref_window": [
-                        133,
-                        339,
-                        658,
-                        865
+                        0,
+                        99,
+                        398,
+                        502
                     ],
                     "search_margin_px": 64.0
                 },
                 "10": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 13,
+                    "ratio_threshold": 0.75,
+                    "count": 26,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 13,
-                    "masked_frac": 0.01228772309356409,
+                    "count_strict": 26,
+                    "masked_frac": 0.011831275720164609,
                     "src_core": [
-                        429,
-                        429,
-                        644,
-                        644
+                        214,
+                        214,
+                        322,
+                        322
                     ],
                     "ref_window": [
-                        345,
-                        378,
-                        870,
-                        903
+                        102,
+                        118,
+                        503,
+                        512
                     ],
                     "search_margin_px": 64.0
                 },
                 "11": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 7,
+                    "ratio_threshold": 0.75,
+                    "count": 26,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 7,
-                    "masked_frac": 0.011128015648772006,
+                    "count_strict": 26,
+                    "masked_frac": 0.009172724125995154,
                     "src_core": [
-                        644,
+                        322,
+                        214,
                         429,
-                        858,
-                        644
+                        322
                     ],
                     "ref_window": [
-                        556,
-                        416,
-                        1018,
-                        930
+                        209,
+                        137,
+                        512,
+                        512
                     ],
                     "search_margin_px": 64.0
                 },
                 "12": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 13,
+                    "ratio_threshold": 0.75,
+                    "count": 15,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 13,
-                    "masked_frac": 0.01194427460913617,
+                    "count_strict": 15,
+                    "masked_frac": 0.010044545375141933,
                     "src_core": [
                         0,
-                        644,
-                        214,
-                        858
+                        322,
+                        107,
+                        429
                     ],
                     "ref_window": [
                         0,
-                        522,
-                        410,
-                        973
+                        198,
+                        274,
+                        512
                     ],
                     "search_margin_px": 64.0
                 },
                 "13": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 9,
+                    "ratio_threshold": 0.75,
+                    "count": 26,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 9,
-                    "masked_frac": 0.009063247120191263,
+                    "count_strict": 26,
+                    "masked_frac": 0.011005327976242466,
                     "src_core": [
+                        107,
+                        322,
                         214,
-                        644,
-                        429,
-                        858
+                        429
                     ],
                     "ref_window": [
-                        108,
-                        549,
-                        622,
-                        1011
+                        0,
+                        206,
+                        379,
+                        512
                     ],
                     "search_margin_px": 64.0
                 },
                 "14": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 20,
+                    "ratio_threshold": 0.75,
+                    "count": 15,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 20,
-                    "masked_frac": 0.009823951314931537,
+                    "count_strict": 15,
+                    "masked_frac": 0.012807199723087574,
                     "src_core": [
-                        429,
-                        644,
-                        644,
-                        858
+                        214,
+                        322,
+                        322,
+                        429
                     ],
                     "ref_window": [
-                        319,
-                        588,
-                        833,
-                        1024
+                        94,
+                        224,
+                        485,
+                        512
                     ],
                     "search_margin_px": 64.0
                 },
                 "15": {
                     "status": "populated",
                     "attempts": 1,
-                    "ratio_threshold": 0.9,
-                    "count": 12,
+                    "ratio_threshold": 0.75,
+                    "count": 16,
                     "anms": null,
                     "relaxed": false,
-                    "count_strict": 12,
-                    "masked_frac": 0.012184470259411303,
+                    "count_strict": 16,
+                    "masked_frac": 0.011878766704515677,
                     "src_core": [
-                        644,
-                        644,
-                        858,
-                        858
+                        322,
+                        322,
+                        429,
+                        429
                     ],
                     "ref_window": [
-                        531,
-                        626,
-                        981,
-                        1024
+                        201,
+                        243,
+                        512,
+                        512
                     ],
                     "search_margin_px": 64.0
                 }
@@ -1046,12 +1046,12 @@
             "src_decimation": 2.0,
             "ref_decimation": 1.0,
             "src_shape": [
-                858,
-                858
+                429,
+                429
             ],
             "ref_shape": [
-                1024,
-                1024
+                512,
+                512
             ],
             "coords_frame": "level pixels: src_core is in the src_shape frame, ref_window in the ref_shape frame; scale by full_shape/src_shape (resp. ref) to reach full resolution, not by src_decimation"
         },
@@ -1062,10 +1062,10 @@
     "acceptance_reasons": [],
     "output_grid": "both",
     "registered_source_written": true,
-    "inlier_ratio_strict": 0.32558139534883723,
-    "strict_putative_count": 172,
-    "strict_inlier_count": 56,
-    "strict_score_min": 0.09999999999999998,
+    "inlier_ratio_strict": 0.9356913183279743,
+    "strict_putative_count": 311,
+    "strict_inlier_count": 291,
+    "strict_score_min": 0.25,
     "inlier_ratio_strict_status": "ok",
     "inlier_ratio_strict_definition": "inliers among putatives with score >= strict_score_min, over that same subset; strict_score_min = 1 - match.ratio_threshold, so the subset is the putatives that pass the Lowe ratio test at the configured threshold before match/tile relaxes it per cell to fill a quota. inlier_ratio itself is unchanged: it is over ALL putatives, relaxed ones included."
 }

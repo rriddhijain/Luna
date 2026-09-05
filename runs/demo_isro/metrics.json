@@ -11,7 +11,7 @@
     "grid_n": 4,
     "grid_rows": 4,
     "grid_cols": 4,
-    "runtime_s": 26.221,
+    "runtime_s": 0.874,
     "match_count": 24,
     "mean_sigma_px": null,
     "sigma_known_count": 0,
@@ -73,14 +73,14 @@
     "tps_status": "too_few_control",
     "tps_applied": false,
     "stage_s": {
-        "load": 0.283,
-        "coarse_init": 0.001,
-        "canonicalise": 25.032,
-        "match": 0.882,
-        "verify": 0.005,
-        "refine": 0.018,
-        "metrics": 0.015,
-        "warp": 0.003
+        "load": 0.286,
+        "coarse_init": 0.0,
+        "canonicalise": 0.056,
+        "match": 0.514,
+        "verify": 0.004,
+        "refine": 0.013,
+        "metrics": 0.009,
+        "warp": 0.0
     },
     "delta_sun_az_deg": null,
     "match_method_requested": "auto",
@@ -1005,6 +1005,11 @@
         "cell_info_level": 0
     },
     "gt_source": null,
+    "accepted": false,
+    "acceptance_reasons": [
+        "no independent accuracy figure: check_status=skipped_too_few_matches, n_check=0 \u2014 the held-out rig produced nothing, so nothing here is validated against points the fit did not see",
+        "redundancy 2 is below the trust bar of 10: the fit is close to reproducing its own sample, so its RMSE is near-zero by construction"
+    ],
     "output_grid": "both",
     "registered_source_written": true,
     "inlier_ratio_strict": 0.2222222222222222,
